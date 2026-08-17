@@ -12,7 +12,9 @@
    gate:  what stands between this team and a submission (see GATES)
 
    Team status assumed by the `gate` values: registered Private Organization,
-   all-girls roster, FTC + FRC, community-based, DoDEA European Region.
+   all-girls roster, FTC + FRC, community-based, USAG Wiesbaden, DoDEA European Region.
+   Local entries are scoped to Wiesbaden — clubs serving other garrisons do not
+   fund this team, so they are not listed.
    PO registration is done, so it is no longer treated as a blocker. PO status
    is NOT the same as IRS 501(c)(3) determination — separate frameworks, and
    several funders below require the latter specifically.
@@ -93,13 +95,14 @@ const GRANTS = [
       "A post-award impact report is required before any renewal",
     ],
     action:
-      "Find your nearest AFCEA European chapter (Ramstein/KMC, Stuttgart, Wiesbaden, Naples, Brussels, " +
-      "and Ramstein-area chapters all exist) and ask them to sponsor your team's application. " +
-      "Offer a demo at a chapter lunch — chapters like having something visible to point at.",
+      "There is an AFCEA chapter in Wiesbaden — go straight to it rather than to AFCEA International. " +
+      "Ask them to sponsor your application and offer a demo at a chapter event; chapters like having " +
+      "something visible to point at, and a chapter that contributes matching funds gets an advantage " +
+      "in the judging. This is a relationship, so start it well before you need the money.",
     links: [
+      { label: "AFCEA Wiesbaden chapter", url: "https://wiesbaden.afceachapters.org/welcome" },
       { label: "European STEM Grants Program", url: "https://www.afcea.org/european-stem-grants-program" },
       { label: "AFCEA Europe grants detail", url: "https://www.afcea.org/site/foundation/grants/europe" },
-      { label: "AFCEA Educational Foundation", url: "https://www.afcea.org/afcea-educational-foundation" },
     ],
   },
   {
@@ -509,86 +512,43 @@ const GRANTS = [
     ],
   },
 
-  /* ------------------- LOCAL MILITARY COMMUNITY (EUROPE) --------------- */
-  {
-    id: "rosc",
-    name: "Ramstein Officers' Spouses' Club Community Grants",
-    funder: "Ramstein OSC (KMC)",
-    category: "local",
-    programs: ["FTC", "FRC"],
-    amount: "Varies; ROSC distributed $316,691 across the KMC in 2023",
-    fit: "high",
-    gate: "ready",
-    status: "open",
-    deadline: null,
-    window: "Grants awarded Jan-May and Aug-Nov. The autumn window is open now.",
-    why:
-      "The fastest realistic money on this page. Local, currently open, and specifically built to fund " +
-      "organizations serving the military community — which is precisely what your team is.",
-    eligibility: [
-      "Organization must serve the Kaiserslautern Military Community and surrounding area",
-      "A registered Private Organization serving military families is exactly the intended recipient",
-      "Applications submitted during the open window; the form is blocked on DoD networks, so use a personal device",
-      "Expect 30-60 days from the monthly deadline to a decision and check",
-    ],
-    action:
-      "Apply in this autumn window. Bring a specific, costed ask (registration fee, a named tool, travel " +
-      "to a qualifier) rather than a general operating request — spouses' club committees fund concrete things.",
-    links: [
-      { label: "Grant applications", url: "https://www.ramsteinosc.org/grant-applications" },
-      { label: "ROSC", url: "https://www.ramsteinosc.org/" },
-    ],
-  },
-  {
-    id: "resa",
-    name: "Ramstein Enlisted Spouses' Association Welfare Requests",
-    funder: "RESA (Ramstein AB)",
-    category: "local",
-    programs: ["FTC", "FRC"],
-    amount: "Varies by request",
-    fit: "high",
-    gate: "ready",
-    status: "rolling",
-    deadline: null,
-    window: "Rolling welfare requests, reviewed on the association's meeting cycle.",
-    why:
-      "A second, independent local pot in the same community. Teams routinely win from both the officers' " +
-      "and enlisted spouses' clubs in the same year.",
-    eligibility: [
-      "Organization must be registered with the installation's Private Organizations office (FSS or MWR) — your team already satisfies this",
-      "Organization must be able to receive funds and hold a bank account",
-      "Item estimates or invoices must be emailed within 24 hours of submitting the request; incomplete requests are not considered",
-    ],
-    action:
-      "Your PO registration is the eligibility bar here, and you clear it. Get vendor quotes together " +
-      "and submit — the 24-hour invoice rule means the paperwork should be ready before you file.",
-    links: [{ label: "Welfare request requirements", url: "http://www.resa-rab.com/welfare-requests" }],
-  },
+  /* ------------------- LOCAL MILITARY COMMUNITY (EUROPE) ---------------
+     Scoped to USAG Wiesbaden. Kaiserslautern-area clubs (Ramstein OSC, RESA)
+     were removed — they fund the KMC, not this garrison. */
   {
     id: "wiesbaden-csc",
     name: "Wiesbaden Community Spouses' Club Grants",
-    funder: "Wiesbaden CSC",
+    funder: "Wiesbaden Community Spouses' Club (WCSC)",
     category: "local",
     programs: ["FTC", "FRC"],
-    amount: "Varies by cycle",
-    fit: "medium",
+    amount: "Varies by request; WCSC has returned $260,000+ to the community in a year",
+    fit: "high",
     gate: "ready",
-    status: "watch",
-    deadline: null,
-    window: "Annual grant cycle; check the club's site for the current window.",
-    confirm: true,
+    status: "open",
+    deadline: "2026-09-15",
+    window:
+      "Applications are due the 15th of the month for the next Grants Committee meeting. " +
+      "The committee meets nine times, August through May.",
     why:
-      "The same model as the Ramstein clubs, serving the Wiesbaden military community. Worth applying to " +
-      "if your team draws students or mentors from that garrison.",
+      "Your home-garrison grant, and the fastest realistic money on this page. It names " +
+      "\"Garrison-approved organizations\" as eligible, which is precisely what a registered Private " +
+      "Organization at USAG Wiesbaden is. Local decision, local money, and a deadline every month.",
     eligibility: [
-      "Organizations serving the Wiesbaden military community",
-      "Private Organization registration is typically expected",
+      "Eligible bodies include school groups, independent teams, units, FRGs, scout troops and Garrison-approved organizations",
+      "Must be officially sanctioned or registered through Garrison, a DoDEA school, a church or a unit — your PO registration satisfies this",
+      "Must have a verifiable mission or project supporting educational, charitable or social work benefiting the local military community",
+      "Applications close on the 15th of the month; larger grants can take up to six weeks after that deadline to decide and pay",
     ],
     action:
-      "Check the cycle dates and apply. Every USAG and airbase in Europe has an equivalent spouses' club — " +
-      "Stuttgart, Vicenza, Aviano, Naples, Rota, Lakenheath, Brussels, Ansbach, Grafenwoehr. Work the one " +
-      "nearest you, then the next.",
-    links: [{ label: "Wiesbaden CSC grants", url: "https://wiesbadencommunityspousesclub.wildapricot.org/Grants" }],
+      "Submit by the 15th with a specific, costed ask — a season registration fee, a named tool, travel to " +
+      "a qualifier — and attach quotes. Committees fund concrete things far more readily than general " +
+      "operating support. Because the deadline repeats monthly through May, missing one costs you weeks, " +
+      "not a season. Ask separately about their scholarship and dual-enrolment programme for your students.",
+    links: [
+      { label: "Grant applications", url: "https://wiesbadencommunityspousesclub.wildapricot.org/Grants" },
+      { label: "Scholarships & dual enrolment", url: "https://wiesbadencommunityspousesclub.wildapricot.org/Scholarship/Dual-Enrollment" },
+      { label: "WCSC community support", url: "https://wiesbadencommunityspousesclub.wildapricot.org/Community" },
+    ],
   },
 
   /* ------------------------ CORPORATE & FOUNDATION --------------------- */
