@@ -81,7 +81,7 @@
     var days = g.deadline ? daysUntil(g.deadline) : null;
 
     var badges = '<span class="badge ' + st + '">' + esc(STATUS_LABEL[st]) + "</span>";
-    if (g.fit === "high") badges += '<span class="badge fit">' + esc(FIT_LABEL.high) + "</span>";
+    if (g.fit === "high") badges += '<span class="badge priority">Priority</span>';
     if (g.confirm) badges += '<span class="badge warn" title="At least one detail could not be confirmed on the funder’s own page">&#9888; confirm</span>';
 
     var tags = (g.programs || [])
@@ -94,7 +94,8 @@
     if (g.deadline) {
       var cls = "countdown" + (days < 0 ? " past" : days <= 30 ? " urgent" : "");
       meta += metaRow("Deadline",
-        esc(formatDate(g.deadline)) + ' <span class="' + cls + '">(' + esc(countdownText(days)) + ")</span>");
+        '<span class="datestamp">' + esc(formatDate(g.deadline)) + "</span> " +
+        '<span class="' + cls + '">' + esc(countdownText(days)) + "</span>");
     }
     if (g.window) meta += metaRow(g.deadline ? "Window" : "Timing", esc(g.window));
     if (g.amount) meta += metaRow("Amount", esc(g.amount));
@@ -112,10 +113,8 @@
 
     return (
       '<article class="card fit-' + g.fit + '" id="g-' + esc(g.id) + '">' +
-        '<div class="card-top">' +
-          "<div><h3>" + esc(g.name) + '</h3><p class="funder">' + esc(g.funder) + "</p></div>" +
-        "</div>" +
-        '<div class="badges">' + badges + "</div>" +
+        "<div><h3>" + esc(g.name) + '</h3><p class="funder">' + esc(g.funder) + "</p></div>" +
+        '<div class="statusline">' + badges + "</div>" +
         '<div class="tags">' + tags + "</div>" +
         '<dl class="meta">' + meta + "</dl>" +
         '<p class="why">' + esc(g.why) + "</p>" +
@@ -218,7 +217,7 @@
   function init() {
     buildChips("chips-category", "category",
       Object.keys(CATEGORIES).map(function (k) {
-        return { value: k, label: CATEGORIES[k].icon + " " + CATEGORIES[k].label };
+        return { value: k, label: CATEGORIES[k].label };
       }));
 
     buildChips("chips-status", "status", [
