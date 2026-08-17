@@ -32,6 +32,34 @@ The deadline column encodes urgency, so an approaching date reads at a glance wh
 Filters are collapsed behind the **Filters** toggle; a badge shows how many are active, and the
 panel opens itself whenever a filter is set.
 
+## Adding grants you find yourself
+
+**+ Add a grant** opens a form. Saved entries are stored in your browser's `localStorage` and merged
+into the list — they sort, filter, search, and appear in the Closing soonest strip exactly like the
+researched ones, marked with a **Yours** badge. Expand one and there's an **Edit** button.
+
+Only three fields are required: grant name, funder, and an application link. Everything else has a
+sensible default. If you enter a deadline, the status is derived from it; if you don't, you pick
+Rolling / Open / Watch yourself.
+
+**Export / import** appears once you've added something. It shows your entries as JSON:
+
+- **Copy** puts it on the clipboard. Browser storage is not a backup — one cleared cache and it's
+  gone, so copy it somewhere real.
+- **Replace from box** imports a pasted array, replacing what's stored.
+- Pasting that JSON into the `GRANTS` array in `assets/grants.js` makes the entries **permanent and
+  shared** with anyone using the site. That's the path from "one person found this" to "the team
+  has this."
+
+Anything loaded from storage or pasted into the import box is re-validated before it renders:
+unknown categories, blockers and statuses fall back to defaults, fields are length-capped, and every
+link must be `http(s)` — a `javascript:` URL is dropped, and an entry with no usable link is
+rejected outright.
+
+Storage can be unavailable (private windows, some embedded viewers). If a save fails you'll get a
+warning saying the entry will not survive a reload; the GitHub Pages version does not have this
+problem.
+
 ## What's here
 
 ```

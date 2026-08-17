@@ -22,6 +22,7 @@
   var STATUS_RANK = { open: 0, soon: 1, rolling: 2, watch: 3, closed: 4 };
 
   var VIEW_KEY = "grantTrackerView";
+  var CUSTOM_KEY = "grantTrackerCustom";
   var RADAR_DAYS = 90;   /* how far ahead the "closing soonest" strip looks */
   var URGENT_DAYS = 14;
   var DUE_DAYS = 45;     /* matches the promotion boundary in effectiveStatus() */
@@ -85,6 +86,79 @@
     return g.status;
   }
 
+  /* --------------------- user-added grants (storage) ------------------- */
+
+  /* Grants the team finds themselves live in localStorage and are merged into
+     the researched list. Nothing here is trusted: every field is re-validated
+     on load, because storage can be edited by hand or carried over from an
+     older version of the page. */
+  var custom = [];
+  var storageOK = true;
+
+  function safeUrl(u) {
+    return typeof u === "string" && /^https?:\/\//i.test(u) ? u : null;
+  }
+
+  function sanitizeGrant(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    if (!raw.name || !raw.funder) return null;
+
+    var links = (Array.isArray(raw.links) ? raw.links : [])
+      .map(function (l) {
+        var u = safeUrl(l && l.url);
+        return u ? { label: String(l.label || "Apply").slice(0, 80), url: u } : null;
+      })
+      .filter(Boolean);
+    if (!links.length) return null;
+
+    var progs = (Array.isArray(raw.programs) ? raw.programs : [])
+      .filter(function (p) { return p === "FTC" || p === "FRC" || p === "FLL"; });
+
+    return {
+      id: String(raw.id || "user-" + Date.now()).slice(0, 60),
+      custom: true,
+      name: String(raw.name).slice(0, 160),
+      funder: String(raw.funder).slice(0, 160),
+      category: CATEGORIES[raw.category] ? raw.category : "corporate",
+      programs: progs.length ? progs : ["FTC", "FRC"],
+      amount: raw.amount ? String(raw.amount).slice(0, 160) : "",
+      fit: ["high", "medium", "low"].indexOf(raw.fit) > -1 ? raw.fit : "medium",
+      gate: GATES[raw.gate] ? raw.gate : null,
+      status: ["open", "soon", "rolling", "watch", "closed"].indexOf(raw.status) > -1
+        ? raw.status : "rolling",
+      deadline: /^\d{4}-\d{2}-\d{2}$/.test(raw.deadline || "") ? raw.deadline : null,
+      window: raw.window ? String(raw.window).slice(0, 400) : "",
+      why: raw.why ? String(raw.why).slice(0, 800) : "Added by your team.",
+      eligibility: (Array.isArray(raw.eligibility) ? raw.eligibility : [])
+        .map(function (e) { return String(e).slice(0, 300); }).slice(0, 20),
+      action: raw.action ? String(raw.action).slice(0, 800) : "",
+      links: links.slice(0, 5),
+    };
+  }
+
+  function loadCustom() {
+    try {
+      var parsed = JSON.parse(localStorage.getItem(CUSTOM_KEY) || "[]");
+      custom = (Array.isArray(parsed) ? parsed : []).map(sanitizeGrant).filter(Boolean);
+    } catch (e) {
+      custom = [];
+    }
+  }
+
+  function saveCustom() {
+    try {
+      localStorage.setItem(CUSTOM_KEY, JSON.stringify(custom));
+      storageOK = true;
+    } catch (e) {
+      storageOK = false;
+    }
+  }
+
+  /* Everything downstream reads this, never GRANTS directly. */
+  function allGrants() {
+    return GRANTS.concat(custom);
+  }
+
   /* ------------------------ shared cell fragments ---------------------- */
 
   function metaRow(term, html) {
@@ -114,6 +188,19 @@
   function confirmMark(g) {
     return g.confirm
       ? ' <span class="inline-warn" title="At least one detail could not be confirmed on the funder’s own page">&#9888; confirm</span>'
+      : "";
+  }
+
+  function yoursMark(g) {
+    return g.custom
+      ? ' <span class="badge yours" title="Added by your team, stored in this browser">Yours</span>'
+      : "";
+  }
+
+  function editBtn(g) {
+    return g.custom
+      ? '<button type="button" class="editbtn" data-edit="' + esc(g.id) +
+        '">Edit<span class="sr-only"> ' + esc(g.name) + "</span></button>"
       : "";
   }
 
@@ -176,7 +263,7 @@
         '<td class="col-name" data-label="Grant">' +
           '<button type="button" class="rowtoggle" aria-expanded="false" aria-controls="' +
             detailId + '">' +
-            '<span class="rowname">' + esc(g.name) + confirmMark(g) + "</span>" +
+            '<span class="rowname">' + esc(g.name) + yoursMark(g) + confirmMark(g) + "</span>" +
             '<span class="rowfunder">' + esc(g.funder) + "</span>" +
           "</button>" +
         "</td>" +
@@ -197,7 +284,7 @@
               '</p><p class="action">' + esc(g.window) + "</p>" : "") +
             eligList(g) +
             actionBlock(g) +
-            '<div class="links">' + linkList(g) + "</div>" +
+            '<div class="links">' + linkList(g) + editBtn(g) + "</div>" +
           "</div>" +
         "</td>" +
       "</tr>"
@@ -236,7 +323,7 @@
 
     return (
       '<article class="card fit-' + g.fit + '" id="g-' + esc(g.id) + '">' +
-        "<div><h3>" + esc(g.name) + '</h3><p class="funder">' + esc(g.funder) + "</p></div>" +
+        "<div><h3>" + esc(g.name) + yoursMark(g) + '</h3><p class="funder">' + esc(g.funder) + "</p></div>" +
         '<div class="statusline">' + badges + "</div>" +
         '<div class="tags">' + tags + "</div>" +
         '<dl class="meta">' + meta + "</dl>" +
@@ -246,7 +333,7 @@
           eligList(g) +
           actionBlock(g) +
         "</details>" +
-        '<div class="links">' + linkList(g) + "</div>" +
+        '<div class="links">' + linkList(g) + editBtn(g) + "</div>" +
       "</article>"
     );
   }
@@ -308,7 +395,8 @@
   var radarwrap = document.querySelector(".radarwrap");
 
   function render() {
-    var list = GRANTS.filter(matches).sort(sortFn);
+    var all = allGrants();
+    var list = all.filter(matches).sort(sortFn);
     var isTable = state.view === "table";
 
     if (isTable) {
@@ -321,10 +409,26 @@
 
     empty.hidden = list.length > 0;
     resultcount.textContent =
-      list.length + " of " + GRANTS.length + " opportunit" + (GRANTS.length === 1 ? "y" : "ies") + " shown";
+      list.length + " of " + all.length + " opportunit" + (all.length === 1 ? "y" : "ies") + " shown";
 
     syncSortHeaders();
     syncFilterCount();
+    renderStats();
+  }
+
+  /* Recomputed on every render, not once at init — the totals move whenever the
+     team adds or removes a grant of their own. */
+  function renderStats() {
+    document.getElementById("stat-total").textContent = allGrants().length;
+    document.getElementById("stat-open").textContent = countBy(function (g) {
+      var s = effectiveStatus(g);
+      return s === "open" || s === "soon" || s === "rolling";
+    });
+    document.getElementById("stat-fit").textContent = countBy(function (g) { return g.fit === "high"; });
+    document.getElementById("stat-ready").textContent = countBy(function (g) {
+      var s = effectiveStatus(g);
+      return g.gate === "ready" && s !== "closed" && s !== "watch";
+    });
   }
 
   /* The filter panel is collapsed by default so the table sits near the top;
@@ -342,7 +446,7 @@
   /* The radar answers "what is closing soonest" independently of the active sort,
      which is the whole reason a fit-sorted table is still usable for deadlines. */
   function renderRadar() {
-    var soon = GRANTS.filter(function (g) {
+    var soon = allGrants().filter(function (g) {
       if (!g.deadline) return false;
       var d = daysUntil(g.deadline);
       return d >= 0 && d <= RADAR_DAYS;
@@ -396,7 +500,7 @@
   }
 
   function countBy(pred) {
-    return GRANTS.filter(pred).length;
+    return allGrants().filter(pred).length;
   }
 
   /* ---------------------------- interactions --------------------------- */
@@ -475,6 +579,179 @@
     );
   }
 
+  /* ------------------------ add / edit your grants --------------------- */
+
+  var dlg = document.getElementById("grantdialog");
+  var mng = document.getElementById("managedialog");
+
+  function $(id) { return document.getElementById(id); }
+
+  function fillSelects() {
+    $("f-category").innerHTML = Object.keys(CATEGORIES)
+      .map(function (k) { return '<option value="' + k + '">' + esc(CATEGORIES[k].label) + "</option>"; })
+      .join("");
+    $("f-gate").innerHTML = '<option value="">Not sure yet</option>' + Object.keys(GATES)
+      .map(function (k) { return '<option value="' + k + '">' + esc(GATES[k].label) + "</option>"; })
+      .join("");
+  }
+
+  function openForm(g) {
+    $("f-err").hidden = true;
+    $("f-id").value = g ? g.id : "";
+    $("f-name").value = g ? g.name : "";
+    $("f-funder").value = g ? g.funder : "";
+    $("f-url").value = g && g.links[0] ? g.links[0].url : "";
+    $("f-category").value = g ? g.category : "corporate";
+    $("f-fit").value = g ? g.fit : "medium";
+    $("f-ftc").checked = g ? g.programs.indexOf("FTC") > -1 : true;
+    $("f-frc").checked = g ? g.programs.indexOf("FRC") > -1 : true;
+    $("f-fll").checked = g ? g.programs.indexOf("FLL") > -1 : false;
+    $("f-amount").value = g ? g.amount : "";
+    $("f-deadline").value = g && g.deadline ? g.deadline : "";
+    $("f-status").value = g && g.status !== "soon" ? g.status : "rolling";
+    $("f-gate").value = g && g.gate ? g.gate : "";
+    $("f-window").value = g ? g.window : "";
+    $("f-why").value = g && g.why !== "Added by your team." ? g.why : "";
+    $("f-elig").value = g ? (g.eligibility || []).join("\n") : "";
+    $("f-action").value = g ? g.action : "";
+    $("dlg-title").textContent = g ? "Edit grant" : "Add a grant";
+    $("f-delete").hidden = !g;
+    dlg.showModal();
+    $("f-name").focus();
+  }
+
+  function readForm() {
+    var url = $("f-url").value.trim();
+    if (!safeUrl(url)) return { error: "The application link must start with http:// or https://" };
+
+    var name = $("f-name").value.trim();
+    var funder = $("f-funder").value.trim();
+    if (!name || !funder) return { error: "Grant name and funder are both required." };
+
+    var deadline = $("f-deadline").value || null;
+    var progs = ["f-ftc", "f-frc", "f-fll"].filter(function (i) { return $(i).checked; })
+      .map(function (i) { return $(i).value; });
+
+    return {
+      grant: sanitizeGrant({
+        id: $("f-id").value || undefined,
+        name: name,
+        funder: funder,
+        category: $("f-category").value,
+        programs: progs,
+        amount: $("f-amount").value.trim(),
+        fit: $("f-fit").value,
+        gate: $("f-gate").value || undefined,
+        /* A date makes the status moot — effectiveStatus() derives it from there. */
+        status: deadline ? "soon" : $("f-status").value,
+        deadline: deadline,
+        window: $("f-window").value.trim(),
+        why: $("f-why").value.trim(),
+        eligibility: $("f-elig").value.split("\n")
+          .map(function (l) { return l.trim(); }).filter(Boolean),
+        action: $("f-action").value.trim(),
+        links: [{ label: "Apply", url: url }],
+      }),
+    };
+  }
+
+  function afterCustomChange() {
+    saveCustom();
+    $("manage-grants").hidden = custom.length === 0;
+    renderRadar();
+    render();
+    if (!storageOK) {
+      $("f-err").hidden = false;
+      $("f-err").textContent =
+        "Saved for this visit, but the browser refused to store it — it will be gone on reload. Use Export to keep a copy.";
+    }
+  }
+
+  function wireDialogs() {
+    fillSelects();
+
+    $("add-grant").addEventListener("click", function () { openForm(null); });
+    $("f-cancel").addEventListener("click", function () { dlg.close(); });
+
+    $("grantform").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var res = readForm();
+      if (res.error || !res.grant) {
+        $("f-err").hidden = false;
+        $("f-err").textContent = res.error || "Something in that entry could not be saved.";
+        return;
+      }
+      var i = custom.findIndex(function (c) { return c.id === res.grant.id; });
+      if (i > -1) custom[i] = res.grant; else custom.push(res.grant);
+      afterCustomChange();
+      if (storageOK) dlg.close();
+    });
+
+    $("f-delete").addEventListener("click", function () {
+      var id = $("f-id").value;
+      custom = custom.filter(function (c) { return c.id !== id; });
+      afterCustomChange();
+      dlg.close();
+    });
+
+    /* Edit buttons live inside re-rendered rows and cards, so delegate. */
+    document.addEventListener("click", function (ev) {
+      var btn = ev.target.closest("[data-edit]");
+      if (!btn) return;
+      var g = custom.filter(function (c) { return c.id === btn.dataset.edit; })[0];
+      if (g) openForm(g);
+    });
+
+    $("manage-grants").addEventListener("click", function () {
+      $("m-err").hidden = true;
+      $("m-json").value = JSON.stringify(custom, null, 2);
+      mng.showModal();
+    });
+    $("m-close").addEventListener("click", function () { mng.close(); });
+
+    $("m-copy").addEventListener("click", function () {
+      var ta = $("m-json");
+      ta.select();
+      var done = function () { $("m-copy").textContent = "Copied"; setTimeout(function () { $("m-copy").textContent = "Copy"; }, 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ta.value).then(done, function () { done(); });
+      } else {
+        try { document.execCommand("copy"); } catch (e) { /* selection is the fallback */ }
+        done();
+      }
+    });
+
+    $("m-import").addEventListener("click", function () {
+      try {
+        var parsed = JSON.parse($("m-json").value);
+        if (!Array.isArray(parsed)) throw new Error("not an array");
+        var cleaned = parsed.map(sanitizeGrant).filter(Boolean);
+        if (!cleaned.length) throw new Error("nothing usable");
+        custom = cleaned;
+        afterCustomChange();
+        mng.close();
+      } catch (e) {
+        $("m-err").hidden = false;
+        $("m-err").textContent =
+          "That is not a usable grant list. It must be a JSON array, and each entry needs a name, a funder, and an http(s) link.";
+      }
+    });
+
+    $("m-clear").addEventListener("click", function () {
+      if (!custom.length) return mng.close();
+      $("m-err").hidden = false;
+      $("m-err").textContent = "Click Delete all once more to remove every grant you have added.";
+      $("m-clear").textContent = "Confirm delete all";
+      $("m-clear").onclick = function () {
+        custom = [];
+        afterCustomChange();
+        mng.close();
+        $("m-clear").textContent = "Delete all";
+        $("m-clear").onclick = null;
+      };
+    });
+  }
+
   function setView(view) {
     state.view = view;
     try { localStorage.setItem(VIEW_KEY, view); } catch (e) { /* storage disabled */ }
@@ -486,6 +763,8 @@
   }
 
   function init() {
+    loadCustom();
+
     buildChips("chips-category", "category",
       Object.keys(CATEGORIES).map(function (k) {
         return { value: k, label: CATEGORIES[k].label };
@@ -542,17 +821,6 @@
       render();
     });
 
-    document.getElementById("stat-total").textContent = GRANTS.length;
-    document.getElementById("stat-open").textContent = countBy(function (g) {
-      var s = effectiveStatus(g);
-      return s === "open" || s === "soon" || s === "rolling";
-    });
-    document.getElementById("stat-fit").textContent = countBy(function (g) { return g.fit === "high"; });
-    document.getElementById("stat-ready").textContent = countBy(function (g) {
-      var s = effectiveStatus(g);
-      return g.gate === "ready" && s !== "closed" && s !== "watch";
-    });
-
     var vd = formatDate(VERIFIED);
     var sv = document.getElementById("stat-verified");
     sv.textContent = vd;
@@ -560,6 +828,8 @@
     document.getElementById("footer-verified").textContent = vd;
 
     wireInteractions();
+    wireDialogs();
+    document.getElementById("manage-grants").hidden = custom.length === 0;
     renderRadar();
     render();
   }

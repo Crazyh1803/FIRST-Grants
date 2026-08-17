@@ -54,6 +54,13 @@
         <option value="funder">Funder (A&ndash;Z)</option>
       </select>
     </div>
+    <div class="filtergroup">
+      <span class="filterlabel">Your list</span>
+      <div class="chips">
+        <button type="button" class="chip addbtn" id="add-grant">+ Add a grant</button>
+        <button type="button" class="chip" id="manage-grants" hidden>Export / import</button>
+      </div>
+    </div>
     <p class="resultcount" id="resultcount" role="status" aria-live="polite"></p>
   </div>
 
@@ -110,6 +117,106 @@
   <div id="grid" class="grid" hidden></div>
   <p id="empty" class="empty" hidden>No grants match those filters. Try clearing one.</p>
 </main>
+
+<dialog id="grantdialog" class="dlg" aria-labelledby="dlg-title">
+  <form method="dialog" class="dlg-x"><button value="cancel" aria-label="Close">&times;</button></form>
+  <h2 id="dlg-title">Add a grant</h2>
+  <p class="dlg-note">
+    Saved in this browser only, and shown in the table alongside the researched entries.
+    Use <strong>Export</strong> to copy them out &mdash; that JSON can be pasted into
+    <code>assets/grants.js</code> to make them permanent for everyone.
+  </p>
+
+  <form id="grantform" class="gform">
+    <input type="hidden" id="f-id">
+
+    <label class="fld"><span>Grant name <b>*</b></span>
+      <input id="f-name" required maxlength="120" placeholder="e.g. Hessen STEM Community Fund"></label>
+
+    <label class="fld"><span>Funder <b>*</b></span>
+      <input id="f-funder" required maxlength="120" placeholder="Who writes the cheque"></label>
+
+    <label class="fld"><span>Application link <b>*</b></span>
+      <input id="f-url" type="url" required placeholder="https://..."
+             pattern="https?://.+" title="Must start with http:// or https://"></label>
+
+    <div class="fld-row">
+      <label class="fld"><span>Category</span>
+        <select id="f-category"></select></label>
+      <label class="fld"><span>Fit for your team</span>
+        <select id="f-fit">
+          <option value="high">Strong fit</option>
+          <option value="medium" selected>Possible fit</option>
+          <option value="low">Long shot</option>
+        </select></label>
+    </div>
+
+    <fieldset class="fld fld-progs">
+      <legend>Programme</legend>
+      <label><input type="checkbox" id="f-ftc" value="FTC" checked> FTC</label>
+      <label><input type="checkbox" id="f-frc" value="FRC" checked> FRC</label>
+      <label><input type="checkbox" id="f-fll" value="FLL"> FLL</label>
+    </fieldset>
+
+    <div class="fld-row">
+      <label class="fld"><span>Amount</span>
+        <input id="f-amount" maxlength="120" placeholder="e.g. Up to $2,500"></label>
+      <label class="fld"><span>Deadline</span>
+        <input id="f-deadline" type="date"></label>
+    </div>
+
+    <div class="fld-row">
+      <label class="fld"><span>If there is no fixed deadline</span>
+        <select id="f-status">
+          <option value="rolling">Rolling &mdash; accepts any time</option>
+          <option value="open">Open now</option>
+          <option value="watch">Watch &mdash; closed, expected to reopen</option>
+        </select></label>
+      <label class="fld"><span>What&rsquo;s blocking it</span>
+        <select id="f-gate"><option value="">Not sure yet</option></select></label>
+    </div>
+
+    <label class="fld"><span>Timing note</span>
+      <input id="f-window" maxlength="200" placeholder="e.g. Opens each March, closes 30 June"></label>
+
+    <label class="fld"><span>Why it fits your team</span>
+      <textarea id="f-why" rows="2" maxlength="600"></textarea></label>
+
+    <label class="fld"><span>Eligibility &mdash; one per line</span>
+      <textarea id="f-elig" rows="3" maxlength="1200"></textarea></label>
+
+    <label class="fld"><span>Next step</span>
+      <textarea id="f-action" rows="2" maxlength="600"></textarea></label>
+
+    <p class="fld-err" id="f-err" role="alert" hidden></p>
+
+    <div class="dlg-actions">
+      <button type="button" class="link" id="f-delete" hidden>Delete</button>
+      <span class="spacer"></span>
+      <button type="button" class="link" id="f-cancel">Cancel</button>
+      <button type="submit" class="link primary" id="f-save">Save grant</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="managedialog" class="dlg" aria-labelledby="mng-title">
+  <form method="dialog" class="dlg-x"><button value="cancel" aria-label="Close">&times;</button></form>
+  <h2 id="mng-title">Export / import your grants</h2>
+  <p class="dlg-note">
+    Everything you have added, as JSON. Copy it somewhere safe &mdash; browser storage is not a backup.
+    Pasting it into <code>assets/grants.js</code> makes these entries permanent and shared.
+  </p>
+  <label class="fld"><span>Your grants</span>
+    <textarea id="m-json" rows="12" spellcheck="false"></textarea></label>
+  <p class="fld-err" id="m-err" role="alert" hidden></p>
+  <div class="dlg-actions">
+    <button type="button" class="link" id="m-clear">Delete all</button>
+    <span class="spacer"></span>
+    <button type="button" class="link" id="m-copy">Copy</button>
+    <button type="button" class="link" id="m-import">Replace from box</button>
+    <button type="button" class="link primary" id="m-close">Done</button>
+  </div>
+</dialog>
 
 <section class="wrap callout" aria-labelledby="reality-h">
   <details class="prose">
