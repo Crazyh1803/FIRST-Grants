@@ -9,16 +9,34 @@
 
    fit:   "high" | "medium" | "low"   -> how well this fits THIS team
    status:"open" | "soon" | "rolling" | "watch" | "closed"
+   gate:  what stands between this team and a submission (see GATES)
+
+   Team status assumed by the `gate` values: registered Private Organization,
+   all-girls roster, FTC + FRC, community-based, DoDEA European Region.
+   PO registration is done, so it is no longer treated as a blocker. PO status
+   is NOT the same as IRS 501(c)(3) determination — separate frameworks, and
+   several funders below require the latter specifically.
    ------------------------------------------------------------------------- */
 
 const VERIFIED = "2026-08-17";
 
 const CATEGORIES = {
-  military: { label: "Military & Defense", icon: "✦" },
-  firstorg: { label: "FIRST & Robotics Foundations", icon: "⚙" },
-  girls: { label: "Women & Girls in STEM", icon: "◆" },
-  local: { label: "Local Military Community (Europe)", icon: "●" },
-  corporate: { label: "Corporate & Foundation STEM", icon: "■" },
+  military: { label: "Military & Defense" },
+  firstorg: { label: "FIRST & Robotics Foundations" },
+  girls: { label: "Women & Girls in STEM" },
+  local: { label: "Local Military Community (Europe)" },
+  corporate: { label: "Corporate & Foundation STEM" },
+};
+
+/* What has to be true before this team can actually submit. */
+const GATES = {
+  ready:      { label: "Ready to submit",    blurb: "Nothing structural in the way — your Private Organization status covers it." },
+  irs:        { label: "Needs 501(c)(3)",    blurb: "Requires IRS determination, which Private Organization status does not confer. Needs your own 501(c)(3) or a fiscal sponsor." },
+  mentor:     { label: "Needs an applicant", blurb: "Someone other than the team submits — a DoDEA/DoD mentor or a K-12 teacher." },
+  sponsor:    { label: "Needs a sponsor",    blurb: "An outside body applies on your behalf: an AFCEA chapter, a SWE section, a school, or your regional FIRST partner." },
+  geography:  { label: "Confirm geography",  blurb: "Carries a U.S.-based clause. Get a written answer on overseas eligibility before drafting." },
+  invite:     { label: "Invitation only",    blurb: "No cold application route. Needs an employee champion inside the company." },
+  unverified: { label: "Status unconfirmed", blurb: "Could not confirm an open funding round exists. Do not budget against it." },
 };
 
 const GRANTS = [
@@ -31,6 +49,7 @@ const GRANTS = [
     programs: ["FTC", "FRC", "FLL"],
     amount: "Registration + pre-approved season products (FRC: registration only)",
     fit: "high",
+    gate: "mentor",
     status: "watch",
     deadline: null,
     window: "Applications for the 2026 season closed 12 Jun 2026. Next window expected spring 2027.",
@@ -60,6 +79,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Up to $1,000",
     fit: "high",
+    gate: "sponsor",
     status: "rolling",
     deadline: null,
     window: "Rolling submissions; judging panel meets twice per year.",
@@ -90,6 +110,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Up to $300 per child (up to $600 for qualifying 180+ day deployments)",
     fit: "medium",
+    gate: "ready",
     status: "rolling",
     deadline: null,
     window: "Rolling — apply per child, any time.",
@@ -117,6 +138,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "$600 (40 awards nationwide)",
     fit: "medium",
+    gate: "mentor",
     status: "soon",
     deadline: "2026-12-15",
     window: "Applications accepted 1 Sep - 15 Dec each year.",
@@ -141,6 +163,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Varies by cycle",
     fit: "medium",
+    gate: "sponsor",
     status: "watch",
     deadline: null,
     window: "Announced by DoDEA Europe district; check with your district office.",
@@ -167,6 +190,7 @@ const GRANTS = [
     programs: ["FTC", "FRC", "FLL"],
     amount: "Varies by sponsor",
     fit: "high",
+    gate: "ready",
     status: "rolling",
     deadline: null,
     window: "Updated year-round as sponsors open and close windows.",
@@ -195,6 +219,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "$3,000 (FRC) / $2,000 (FTC)",
     fit: "high",
+    gate: "irs",
     status: "open",
     deadline: null,
     window: "Accepting 2026/2027 season applications since 1 May 2026. Some regional partners report a 1 Sep cutoff.",
@@ -204,13 +229,14 @@ const GRANTS = [
       "team grants in FIRST. Worth roughly a third of an FRC registration.",
     eligibility: [
       "Public school, private school with 501(c)(3), or a team holding its own 501(c)(3)",
+      "Private Organization registration does not satisfy this — the foundation asks for IRS determination",
       "Priority to teams designing and building parts with CNC machining",
       "Funds may NOT be spent on anything Haas Automation makes or a Haas Factory Outlet sells (including Haas Tooling)",
     ],
     action:
-      "Apply now rather than later — and check the cutoff on the application page, since third-party " +
-      "sources disagree about whether 1 Sep applies. Spend the award on registration, stock, or travel, " +
-      "never on Haas-branded product.",
+      "Check whether your PO also holds its own 501(c)(3); many do not. If it does, apply now and " +
+      "confirm the cutoff, since sources disagree about whether 1 Sep applies. If it does not, apply " +
+      "through a fiscal sponsor with IRS determination — a DoDEA school or a booster organization.",
     links: [{ label: "Apply Now", url: "https://www.ghaasfoundation.org/apply-now" }],
   },
   {
@@ -221,6 +247,7 @@ const GRANTS = [
     programs: ["FTC", "FRC", "FLL"],
     amount: "Varies by program level",
     fit: "medium",
+    gate: "geography",
     status: "soon",
     deadline: "2026-09-13",
     window: "FRC window closes 13 Sep for the 2027 season; FLL/FTC windows differ.",
@@ -249,6 +276,7 @@ const GRANTS = [
     programs: ["FRC", "FTC"],
     amount: "Fixed award by competition type",
     fit: "high",
+    gate: "geography",
     status: "watch",
     deadline: null,
     window: "Applications typically open in June; grant reports due in May.",
@@ -274,6 +302,7 @@ const GRANTS = [
     programs: ["FRC", "FTC"],
     amount: "Typically $1,000-$5,600, often covering registration",
     fit: "medium",
+    gate: "sponsor",
     status: "watch",
     deadline: null,
     window: "Distributed through FIRST regional partners; timing varies by region.",
@@ -299,6 +328,7 @@ const GRANTS = [
     programs: ["FRC"],
     amount: "One full Regional or District registration, paid directly to FIRST",
     fit: "low",
+    gate: "geography",
     status: "soon",
     deadline: "2026-09-30",
     window: "Rookie-team deadline is 30 Sep, 11:59:59 pm EDT.",
@@ -326,6 +356,7 @@ const GRANTS = [
     programs: ["FRC", "FTC"],
     amount: "Varies",
     fit: "low",
+    gate: "geography",
     status: "soon",
     deadline: "2026-09-30",
     window: "Reported to close 30 Sep for the 2027 season.",
@@ -343,6 +374,7 @@ const GRANTS = [
     programs: ["FRC", "FTC"],
     amount: "Varies",
     fit: "low",
+    gate: "geography",
     status: "soon",
     deadline: "2026-11-06",
     window: "Portal reported open with a 6 Nov deadline.",
@@ -365,6 +397,7 @@ const GRANTS = [
     programs: ["FRC", "FTC"],
     amount: "$5,000 (up to five awards across two seasons)",
     fit: "high",
+    gate: "geography",
     status: "watch",
     deadline: null,
     window: "The 2026-2027 application closed 1 Jun 2026. Watch for the next cycle.",
@@ -394,6 +427,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Up to $50,000 (some sources cite up to $75,000)",
     fit: "medium",
+    gate: "irs",
     status: "rolling",
     deadline: null,
     window: "Letter of Interest reviewed on a rolling basis; full applications by invitation. Dates reported inconsistently by third parties.",
@@ -404,11 +438,11 @@ const GRANTS = [
     eligibility: [
       "Applicant must be a 501(c)(3); AAUW branches and state orgs with 501(c)(4) may also apply",
       "Supports K-12 girls building skills and confidence in STEM",
-      "Your team needs a fiscal sponsor if it does not hold its own 501(c)(3)",
+      "Private Organization status alone will not clear this — you need IRS determination or a fiscal sponsor",
     ],
     action:
       "Confirm the live LOI deadline on AAUW's own page — third-party aggregators are contradicting each " +
-      "other. If you lack 501(c)(3) status, identify a fiscal sponsor before drafting.",
+      "other. Settle the fiscal-sponsor question first; at this award size it is worth the setup.",
     links: [
       { label: "Community Action Grants", url: "https://www.aauw.org/resources/programs/fellowships-grants/community-action-grant/" },
       { label: "All AAUW fellowships & grants", url: "https://www.aauw.org/resources/programs/fellowships-grants/" },
@@ -423,6 +457,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "$250 - $5,000",
     fit: "medium",
+    gate: "sponsor",
     status: "watch",
     deadline: "2027-04-12",
     window: "Three cycles per year. Cycle 3 opens 12 Jan 2027 and closes 12 Apr 2027, 11:59 pm CT.",
@@ -452,6 +487,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Historically ~$1,000-$3,000 per program; current funding status unclear",
     fit: "low",
+    gate: "unverified",
     status: "watch",
     deadline: null,
     window: "AspireIT ran 2013-2021 and invested $1M+ across 400+ programs. Current public materials are largely a free toolkit rather than an open funding call.",
@@ -482,6 +518,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Varies; ROSC distributed $316,691 across the KMC in 2023",
     fit: "high",
+    gate: "ready",
     status: "open",
     deadline: null,
     window: "Grants awarded Jan-May and Aug-Nov. The autumn window is open now.",
@@ -490,6 +527,7 @@ const GRANTS = [
       "organizations serving the military community — which is precisely what your team is.",
     eligibility: [
       "Organization must serve the Kaiserslautern Military Community and surrounding area",
+      "A registered Private Organization serving military families is exactly the intended recipient",
       "Applications submitted during the open window; the form is blocked on DoD networks, so use a personal device",
       "Expect 30-60 days from the monthly deadline to a decision and check",
     ],
@@ -509,6 +547,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Varies by request",
     fit: "high",
+    gate: "ready",
     status: "rolling",
     deadline: null,
     window: "Rolling welfare requests, reviewed on the association's meeting cycle.",
@@ -516,13 +555,13 @@ const GRANTS = [
       "A second, independent local pot in the same community. Teams routinely win from both the officers' " +
       "and enlisted spouses' clubs in the same year.",
     eligibility: [
-      "Organization must be registered with the installation's Private Organizations office (FSS or MWR)",
+      "Organization must be registered with the installation's Private Organizations office (FSS or MWR) — your team already satisfies this",
       "Organization must be able to receive funds and hold a bank account",
       "Item estimates or invoices must be emailed within 24 hours of submitting the request; incomplete requests are not considered",
     ],
     action:
-      "Register as a Private Organization on your installation first — it unlocks this grant, the OSC " +
-      "grant, and on-base fundraising all at once. Have quotes ready before you submit.",
+      "Your PO registration is the eligibility bar here, and you clear it. Get vendor quotes together " +
+      "and submit — the 24-hour invoice rule means the paperwork should be ready before you file.",
     links: [{ label: "Welfare request requirements", url: "http://www.resa-rab.com/welfare-requests" }],
   },
   {
@@ -533,6 +572,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Varies by cycle",
     fit: "medium",
+    gate: "ready",
     status: "watch",
     deadline: null,
     window: "Annual grant cycle; check the club's site for the current window.",
@@ -560,6 +600,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Varies",
     fit: "medium",
+    gate: "irs",
     status: "rolling",
     deadline: null,
     window: "Accepted year-round through the online giving system; evaluated roughly quarterly.",
@@ -589,6 +630,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Typically $50,000+ for programme-level grants",
     fit: "low",
+    gate: "invite",
     status: "watch",
     deadline: null,
     window: "By region and business unit; most giving flows through established partners.",
@@ -614,6 +656,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Varies",
     fit: "low",
+    gate: "invite",
     status: "watch",
     deadline: null,
     window: "Foundation grants are by invitation only; local community outreach funds exist in select locations.",
@@ -641,6 +684,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Varies",
     fit: "low",
+    gate: "invite",
     status: "watch",
     deadline: null,
     window: "The most recent Connect grant application period ran through 31 Jul 2026. Watch for the next opening.",
@@ -668,6 +712,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Up to $5,000 (larger requests reviewed on a separate track)",
     fit: "medium",
+    gate: "mentor",
     status: "soon",
     deadline: "2026-10-01",
     window: "Rolling quarterly deadlines: 1 Mar, 1 Jun, 1 Sep, 1 Dec, with a 1 Oct cycle currently reported.",
@@ -692,6 +737,7 @@ const GRANTS = [
     programs: ["FTC", "FRC"],
     amount: "Up to $50,000",
     fit: "low",
+    gate: "geography",
     status: "watch",
     deadline: "2027-01-22",
     window: "Annual cycle opens with an inquiry form; the 2026 inquiry deadline was 22 Jan. Expect a similar date in 2027.",
@@ -717,6 +763,7 @@ const GRANTS = [
     programs: ["FTC", "FRC", "FLL"],
     amount: "Varies by project",
     fit: "low",
+    gate: "geography",
     status: "rolling",
     deadline: null,
     window: "Ongoing while the partnership is funded.",

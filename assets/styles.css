@@ -381,6 +381,21 @@ a { color: var(--accent-ink); }
 .badge.rolling { background: var(--accent-soft); color: var(--accent-ink); }
 .badge.watch   { background: var(--idle-soft);   color: var(--idle); }
 .badge.closed  { background: var(--idle-soft);   color: var(--faint); }
+/* Blocker labels: only "ready" gets a positive semantic colour. The rest are
+   deliberately neutral — they are prerequisites to work through, not failures. */
+.badge.gate {
+  background: transparent;
+  border: 1px dashed var(--border-firm);
+  color: var(--muted);
+  padding: 4px 7px;
+}
+.badge.gate-ready {
+  background: var(--ok-soft);
+  border-color: transparent;
+  color: var(--ok);
+}
+.badge.gate-invite, .badge.gate-unverified { color: var(--faint); }
+
 .badge.priority {
   background: transparent;
   color: var(--accent-ink);

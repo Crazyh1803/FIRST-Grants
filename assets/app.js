@@ -24,7 +24,7 @@
   /* Default sort is "fit", not "deadline": the strongest-fit opportunities for this
      team are mostly rolling or awaiting a reopening, so a date-first sort buries
      exactly the entries the team should act on. */
-  var state = { q: "", category: null, status: null, fit: null, program: null, sort: "fit" };
+  var state = { q: "", category: null, status: null, fit: null, program: null, gate: null, sort: "fit" };
 
   /* ------------------------------ helpers ------------------------------ */
 
@@ -81,6 +81,10 @@
     var days = g.deadline ? daysUntil(g.deadline) : null;
 
     var badges = '<span class="badge ' + st + '">' + esc(STATUS_LABEL[st]) + "</span>";
+    if (g.gate) {
+      badges += '<span class="badge gate gate-' + esc(g.gate) + '" title="' +
+        esc(GATES[g.gate].blurb) + '">' + esc(GATES[g.gate].label) + "</span>";
+    }
     if (g.fit === "high") badges += '<span class="badge priority">Priority</span>';
     if (g.confirm) badges += '<span class="badge warn" title="At least one detail could not be confirmed on the funder’s own page">&#9888; confirm</span>';
 
@@ -133,6 +137,7 @@
   function matches(g) {
     if (state.category && g.category !== state.category) return false;
     if (state.fit && g.fit !== state.fit) return false;
+    if (state.gate && g.gate !== state.gate) return false;
     if (state.program && (g.programs || []).indexOf(state.program) === -1) return false;
 
     if (state.status) {
@@ -145,6 +150,7 @@
     if (state.q) {
       var hay = [g.name, g.funder, g.amount, g.why, g.action, g.window,
                  CATEGORIES[g.category].label, (g.programs || []).join(" "),
+                 g.gate ? GATES[g.gate].label : "",
                  (g.eligibility || []).join(" ")].join(" ").toLowerCase();
       if (hay.indexOf(state.q) === -1) return false;
     }
@@ -235,6 +241,11 @@
       { value: "low", label: "Long shot" },
     ]);
 
+    buildChips("chips-gate", "gate",
+      Object.keys(GATES).map(function (k) {
+        return { value: k, label: GATES[k].label };
+      }));
+
     buildChips("chips-program", "program", [
       { value: "FTC", label: "FTC" },
       { value: "FRC", label: "FRC" },
@@ -257,6 +268,10 @@
       return s === "open" || s === "soon" || s === "rolling";
     });
     document.getElementById("stat-fit").textContent = countBy(function (g) { return g.fit === "high"; });
+    document.getElementById("stat-ready").textContent = countBy(function (g) {
+      var s = effectiveStatus(g);
+      return g.gate === "ready" && s !== "closed" && s !== "watch";
+    });
 
     var vd = formatDate(VERIFIED);
     var sv = document.getElementById("stat-verified");
