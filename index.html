@@ -10,16 +10,15 @@
 </head>
 <body>
 
-<a class="skip" href="#grid">Skip to grant list</a>
+<a class="skip" href="#gtable">Skip to grant list</a>
 
 <header class="hero">
   <div class="wrap">
     <p class="eyebrow">FTC &amp; FRC &middot; Community team &middot; DoDEA European Region</p>
     <h1>Grant Tracker</h1>
     <p class="lede">
-      Funding opportunities for an all-girls FIRST Robotics team of military kids stationed in Europe.
-      Every entry below links straight to the funder&rsquo;s own application page &mdash; because the
-      funder&rsquo;s page is the only thing that is ever actually up to date.
+      Funding for an all-girls FIRST Robotics team of military kids stationed in Europe. Every entry
+      links straight to the funder&rsquo;s own application page &mdash; the only thing ever actually up to date.
     </p>
     <dl class="stats">
       <div><dt>Opportunities tracked</dt><dd id="stat-total">&mdash;</dd></div>
@@ -31,39 +30,9 @@
   </div>
 </header>
 
-<section class="wrap callout" aria-labelledby="reality-h">
-  <h2 id="reality-h">What&rsquo;s actually blocking each grant</h2>
-  <p>
-    You are a <strong>registered Private Organization</strong>, which settles the question that gates
-    the local money &mdash; the spouses&rsquo; club grants are open to you today, with no prerequisite
-    left to clear. Every card below carries a <strong>Blocker</strong> label naming the one thing
-    standing between your team and a submission. There are four kinds worth understanding:
-  </p>
-  <ol class="reality">
-    <li>
-      <strong>Needs 501(c)(3).</strong> The important catch: Private Organization status and IRS
-      determination are <em>separate frameworks</em>. A PO operating under DoDI 1000.15 may or may not
-      also hold 501(c)(3) &mdash; many do not. Gene Haas, AAUW and Lockheed Martin all ask for the IRS
-      side specifically. Find out which you have; if the answer is no, a <em>fiscal sponsor</em> with
-      determination can receive the money on your behalf.
-    </li>
-    <li>
-      <strong>Confirm geography.</strong> Many American STEM funds restrict awards to teams located in
-      the United States. A team on a U.S. installation overseas is sometimes counted and sometimes not.
-      Ask in writing and keep the answer &mdash; it is reusable evidence for every later application.
-    </li>
-    <li>
-      <strong>Needs an applicant or a sponsor.</strong> Some grants are not submitted by the team at
-      all. DoW STEM needs a coach with a <code>.mil</code> or <code>.dodea</code> affiliation; AFA needs
-      a K-12 teacher; AFCEA needs a European chapter; SWE needs a section. The relationship is the work,
-      and it has a longer lead time than the writing does.
-    </li>
-    <li>
-      <strong>Invitation only.</strong> Northrop Grumman, Boeing and RTX have no cold-application route.
-      An employee parent or mentor inside the company is the only door. Don&rsquo;t spend proposal time
-      on these until you have one.
-    </li>
-  </ol>
+<section class="wrap radarwrap" aria-labelledby="radar-h">
+  <h2 id="radar-h" class="radar-h">Closing soonest</h2>
+  <div class="radar" id="radar"></div>
 </section>
 
 <nav class="wrap controls" aria-label="Filter grants">
@@ -71,26 +40,10 @@
     <label class="sr-only" for="search">Search grants</label>
     <input id="search" type="search" placeholder="Search funder, programme, or keyword&hellip;" autocomplete="off">
   </div>
-  <div class="filters">
-    <div class="filtergroup" role="group" aria-label="Filter by category">
-      <span class="filterlabel">Category</span>
-      <div class="chips" id="chips-category"></div>
-    </div>
-    <div class="filtergroup" role="group" aria-label="Filter by status">
-      <span class="filterlabel">Status</span>
-      <div class="chips" id="chips-status"></div>
-    </div>
-    <div class="filtergroup" role="group" aria-label="Filter by what is blocking a submission">
-      <span class="filterlabel">Blocker</span>
-      <div class="chips" id="chips-gate"></div>
-    </div>
-    <div class="filtergroup" role="group" aria-label="Filter by fit">
-      <span class="filterlabel">Fit</span>
-      <div class="chips" id="chips-fit"></div>
-    </div>
-    <div class="filtergroup" role="group" aria-label="Filter by programme">
-      <span class="filterlabel">Programme</span>
-      <div class="chips" id="chips-program"></div>
+  <div class="topbar">
+    <div class="filtergroup" role="group" aria-label="Choose a view">
+      <span class="filterlabel">View</span>
+      <div class="chips" id="chips-view"></div>
     </div>
     <div class="filtergroup sortgroup">
       <label class="filterlabel" for="sort">Sort</label>
@@ -101,17 +54,107 @@
         <option value="funder">Funder (A&ndash;Z)</option>
       </select>
     </div>
+    <p class="resultcount" id="resultcount" role="status" aria-live="polite"></p>
   </div>
-  <p class="resultcount" id="resultcount" role="status" aria-live="polite"></p>
+
+  <details class="filterpanel" id="filterpanel">
+    <summary>
+      <span class="fp-label">Filters</span>
+      <span class="fp-count" id="fp-count" hidden></span>
+    </summary>
+    <div class="filters">
+      <div class="filtergroup" role="group" aria-label="Filter by category">
+        <span class="filterlabel">Category</span>
+        <div class="chips" id="chips-category"></div>
+      </div>
+      <div class="filtergroup" role="group" aria-label="Filter by status">
+        <span class="filterlabel">Status</span>
+        <div class="chips" id="chips-status"></div>
+      </div>
+      <div class="filtergroup" role="group" aria-label="Filter by what is blocking a submission">
+        <span class="filterlabel">Blocker</span>
+        <div class="chips" id="chips-gate"></div>
+      </div>
+      <div class="filtergroup" role="group" aria-label="Filter by fit">
+        <span class="filterlabel">Fit</span>
+        <div class="chips" id="chips-fit"></div>
+      </div>
+      <div class="filtergroup" role="group" aria-label="Filter by programme">
+        <span class="filterlabel">Programme</span>
+        <div class="chips" id="chips-program"></div>
+      </div>
+    </div>
+  </details>
 </nav>
 
 <main class="wrap">
-  <div id="grid" class="grid"></div>
+  <div id="tablewrap" class="tablewrap">
+    <table id="gtable" class="gtable">
+      <caption class="sr-only">
+        Grant opportunities, with amount, deadline and what is blocking a submission.
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col" class="col-fit" data-sort="fit" aria-sort="ascending">Fit</th>
+          <th scope="col" class="col-name" data-sort="name">Grant</th>
+          <th scope="col" class="col-prog">Programme</th>
+          <th scope="col" class="col-amt">Amount</th>
+          <th scope="col" class="col-due" data-sort="deadline">Deadline</th>
+          <th scope="col" class="col-gate">Blocker</th>
+          <th scope="col" class="col-go"><span class="sr-only">Apply</span></th>
+        </tr>
+      </thead>
+      <tbody id="gtbody"></tbody>
+    </table>
+  </div>
+  <div id="grid" class="grid" hidden></div>
   <p id="empty" class="empty" hidden>No grants match those filters. Try clearing one.</p>
 </main>
 
+<section class="wrap callout" aria-labelledby="reality-h">
+  <details class="prose">
+    <summary><h2 id="reality-h">What&rsquo;s actually blocking each grant</h2></summary>
+    <div class="prose-body">
+      <p>
+        You are a <strong>registered Private Organization</strong>, which settles the question that
+        gates the local money &mdash; the spouses&rsquo; club grants are open to you today, with no
+        prerequisite left to clear. Every row carries a <strong>Blocker</strong> label naming the one
+        thing standing between your team and a submission. There are four kinds worth understanding:
+      </p>
+      <ol class="reality">
+        <li>
+          <strong>Needs 501(c)(3).</strong> The important catch: Private Organization status and IRS
+          determination are <em>separate frameworks</em>. A PO operating under DoDI 1000.15 may or may
+          not also hold 501(c)(3) &mdash; many do not. Gene Haas, AAUW and Lockheed Martin all ask for
+          the IRS side specifically. Find out which you have; if the answer is no, a
+          <em>fiscal sponsor</em> with determination can receive the money on your behalf.
+        </li>
+        <li>
+          <strong>Confirm geography.</strong> Many American STEM funds restrict awards to teams located
+          in the United States. A team on a U.S. installation overseas is sometimes counted and
+          sometimes not. Ask in writing and keep the answer &mdash; it is reusable evidence for every
+          later application.
+        </li>
+        <li>
+          <strong>Needs an applicant or a sponsor.</strong> Some grants are not submitted by the team at
+          all. DoW STEM needs a coach with a <code>.mil</code> or <code>.dodea</code> affiliation; AFA
+          needs a K-12 teacher; AFCEA needs a European chapter; SWE needs a section. The relationship is
+          the work, and it has a longer lead time than the writing does.
+        </li>
+        <li>
+          <strong>Invitation only.</strong> Northrop Grumman, Boeing and RTX have no cold-application
+          route. An employee parent or mentor inside the company is the only door. Don&rsquo;t spend
+          proposal time on these until you have one.
+        </li>
+      </ol>
+    </div>
+  </details>
+</section>
+
 <section class="wrap callout" aria-labelledby="playbook-h">
-  <h2 id="playbook-h">A sequence that works</h2>
+  <details class="prose">
+    <summary><h2 id="playbook-h">A sequence that works</h2></summary>
+    <div class="prose-body">
   <ol class="playbook">
     <li><strong>Apply to the open local money this week.</strong> Ramstein OSC is in its autumn window and RESA takes rolling requests. Your PO registration is the eligibility bar and you clear it. Bring vendor quotes and a specific costed ask, not a general operating request.</li>
     <li><strong>Answer one question: does your PO also hold 501(c)(3)?</strong> It decides whether Gene Haas, AAUW and Lockheed Martin are open to you directly or need a fiscal sponsor. Everything in the &ldquo;Needs 501(c)(3)&rdquo; filter waits on this.</li>
@@ -127,13 +170,15 @@
     <strong>military-connected students who change schools every two to three years</strong>. Continuity
     of a STEM programme across duty stations is a real problem that funders in this space care about.
   </p>
+    </div>
+  </details>
 </section>
 
 <footer class="wrap site-footer">
   <p>
     <strong>Verify before you rely on it.</strong> Deadlines and amounts here were checked against public
     sources on <span id="footer-verified"></span>. Grant windows shift every season and third-party
-    aggregators frequently repeat stale dates. Cards marked
+    aggregators frequently repeat stale dates. Entries marked
     <span class="inline-warn">&#9888; confirm</span> had at least one detail that could not be pinned to
     the funder&rsquo;s own page.
   </p>

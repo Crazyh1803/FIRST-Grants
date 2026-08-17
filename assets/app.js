@@ -21,10 +21,25 @@
   var FIT_RANK = { high: 0, medium: 1, low: 2 };
   var STATUS_RANK = { open: 0, soon: 1, rolling: 2, watch: 3, closed: 4 };
 
+  var VIEW_KEY = "grantTrackerView";
+  var RADAR_DAYS = 90;   /* how far ahead the "closing soonest" strip looks */
+  var URGENT_DAYS = 14;
+  var DUE_DAYS = 45;     /* matches the promotion boundary in effectiveStatus() */
+
   /* Default sort is "fit", not "deadline": the strongest-fit opportunities for this
      team are mostly rolling or awaiting a reopening, so a date-first sort buries
-     exactly the entries the team should act on. */
-  var state = { q: "", category: null, status: null, fit: null, program: null, gate: null, sort: "fit" };
+     exactly the entries the team should act on. The radar strip above the table is
+     what keeps approaching deadlines visible regardless of sort order. */
+  var state = {
+    q: "", category: null, status: null, fit: null, program: null, gate: null,
+    sort: "fit",
+    view: "table",
+  };
+
+  try {
+    var savedView = localStorage.getItem(VIEW_KEY);
+    if (savedView === "table" || savedView === "cards") state.view = savedView;
+  } catch (e) { /* private mode / storage disabled — the default stands */ }
 
   /* ------------------------------ helpers ------------------------------ */
 
@@ -70,11 +85,126 @@
     return g.status;
   }
 
-  /* --------------------------- card rendering -------------------------- */
+  /* ------------------------ shared cell fragments ---------------------- */
 
   function metaRow(term, html) {
     return '<div class="meta-row"><dt>' + esc(term) + "</dt><dd>" + html + "</dd></div>";
   }
+
+  function eligList(g) {
+    var items = (g.eligibility || [])
+      .map(function (e) { return "<li>" + esc(e) + "</li>"; })
+      .join("");
+    return items ? '<p class="detail-h">Eligibility</p><ul class="elig">' + items + "</ul>" : "";
+  }
+
+  function actionBlock(g) {
+    return g.action ? '<p class="detail-h">Do this</p><p class="action">' + esc(g.action) + "</p>" : "";
+  }
+
+  function linkList(g) {
+    return (g.links || [])
+      .map(function (l, i) {
+        return '<a class="link' + (i === 0 ? " primary" : "") + '" href="' + esc(l.url) +
+          '" target="_blank" rel="noopener noreferrer">' + esc(l.label) + "</a>";
+      })
+      .join("");
+  }
+
+  function confirmMark(g) {
+    return g.confirm
+      ? ' <span class="inline-warn" title="At least one detail could not be confirmed on the funder’s own page">&#9888; confirm</span>'
+      : "";
+  }
+
+  /* The deadline cell carries the whole "what is closing soon" signal, so it
+     renders a date, a remaining-days count, and an urgency class in one place.
+     Undated grants show their operational state instead of a blank. */
+  function deadlineCell(g) {
+    var st = effectiveStatus(g);
+
+    if (g.deadline) {
+      var days = daysUntil(g.deadline);
+      if (days < 0) {
+        return { cls: "dl-past", html: '<span class="dl-state">Closed</span>' };
+      }
+      var cls = days <= URGENT_DAYS ? "dl-urgent" : days <= DUE_DAYS ? "dl-due" : "dl-ok";
+      var left = days === 0 ? "today" : days === 1 ? "1 day left" : days + " days left";
+      return {
+        cls: cls,
+        html: '<span class="dl-date">' + esc(formatDate(g.deadline)) + "</span>" +
+              '<span class="dl-left">' + esc(left) + "</span>",
+      };
+    }
+
+    if (st === "rolling") return { cls: "dl-rolling", html: '<span class="dl-state">Rolling</span>' };
+    if (st === "open")    return { cls: "dl-open",    html: '<span class="dl-state">Open now</span>' };
+    if (st === "closed")  return { cls: "dl-past",    html: '<span class="dl-state">Closed</span>' };
+    return { cls: "dl-watch", html: '<span class="dl-state">Watch</span>' };
+  }
+
+  /* --------------------------- table rendering ------------------------- */
+
+  var FIT_DOTS = { high: "●●●", medium: "●●○", low: "●○○" };
+
+  function renderRow(g) {
+    var dl = deadlineCell(g);
+    var detailId = "d-" + g.id;
+
+    var progs = (g.programs || [])
+      .map(function (p) { return '<span class="tag">' + esc(p) + "</span>"; })
+      .join("");
+
+    var gate = g.gate
+      ? '<span class="badge gate gate-' + esc(g.gate) + '" title="' + esc(GATES[g.gate].blurb) +
+        '">' + esc(GATES[g.gate].label) + "</span>"
+      : "";
+
+    var first = (g.links || [])[0];
+    var go = first
+      ? '<a class="link primary rowgo" href="' + esc(first.url) +
+        '" target="_blank" rel="noopener noreferrer">Apply<span class="sr-only"> for ' +
+        esc(g.name) + "</span></a>"
+      : "";
+
+    return (
+      '<tr class="grow" id="r-' + esc(g.id) + '" data-fit="' + esc(g.fit) + '">' +
+        '<td class="col-fit" data-label="Fit">' +
+          '<span class="fitdots" aria-hidden="true">' + FIT_DOTS[g.fit] + "</span>" +
+          '<span class="sr-only">' + esc(FIT_LABEL[g.fit]) + "</span>" +
+        "</td>" +
+        '<td class="col-name" data-label="Grant">' +
+          '<button type="button" class="rowtoggle" aria-expanded="false" aria-controls="' +
+            detailId + '">' +
+            '<span class="rowname">' + esc(g.name) + confirmMark(g) + "</span>" +
+            '<span class="rowfunder">' + esc(g.funder) + "</span>" +
+          "</button>" +
+        "</td>" +
+        '<td class="col-prog" data-label="Programme"><span class="tags">' + progs + "</span></td>" +
+        '<td class="col-amt" data-label="Amount"' +
+          (g.amount ? ' title="' + esc(g.amount) + '"' : "") + '>' +
+          '<span class="amt">' + esc(g.amount || "—") + "</span></td>" +
+        '<td class="col-due ' + dl.cls + '" data-label="Deadline"' +
+          (g.window ? ' title="' + esc(g.window) + '"' : "") + ">" + dl.html + "</td>" +
+        '<td class="col-gate" data-label="Blocker">' + gate + "</td>" +
+        '<td class="col-go" data-label="">' + go + "</td>" +
+      "</tr>" +
+      '<tr class="detailrow" id="' + detailId + '" hidden>' +
+        '<td colspan="7">' +
+          '<div class="detailbox">' +
+            '<p class="why">' + esc(g.why) + "</p>" +
+            (g.window ? '<p class="detail-h">' + (g.deadline ? "Window" : "Timing") +
+              '</p><p class="action">' + esc(g.window) + "</p>" : "") +
+            eligList(g) +
+            actionBlock(g) +
+            '<div class="links">' + linkList(g) + "</div>" +
+          "</div>" +
+        "</td>" +
+      "</tr>"
+    );
+  }
+
+  /* --------------------------- card rendering -------------------------- */
 
   function renderCard(g) {
     var st = effectiveStatus(g);
@@ -104,17 +234,6 @@
     if (g.window) meta += metaRow(g.deadline ? "Window" : "Timing", esc(g.window));
     if (g.amount) meta += metaRow("Amount", esc(g.amount));
 
-    var elig = (g.eligibility || [])
-      .map(function (e) { return "<li>" + esc(e) + "</li>"; })
-      .join("");
-
-    var links = (g.links || [])
-      .map(function (l, i) {
-        return '<a class="link' + (i === 0 ? " primary" : "") + '" href="' + esc(l.url) +
-          '" target="_blank" rel="noopener noreferrer">' + esc(l.label) + "</a>";
-      })
-      .join("");
-
     return (
       '<article class="card fit-' + g.fit + '" id="g-' + esc(g.id) + '">' +
         "<div><h3>" + esc(g.name) + '</h3><p class="funder">' + esc(g.funder) + "</p></div>" +
@@ -124,10 +243,10 @@
         '<p class="why">' + esc(g.why) + "</p>" +
         '<details class="more">' +
           "<summary>Eligibility &amp; next step</summary>" +
-          (elig ? '<p class="detail-h">Eligibility</p><ul class="elig">' + elig + "</ul>" : "") +
-          (g.action ? '<p class="detail-h">Do this</p><p class="action">' + esc(g.action) + "</p>" : "") +
+          eligList(g) +
+          actionBlock(g) +
         "</details>" +
-        '<div class="links">' + links + "</div>" +
+        '<div class="links">' + linkList(g) + "</div>" +
       "</article>"
     );
   }
@@ -181,15 +300,75 @@
   /* ------------------------------ rendering ---------------------------- */
 
   var grid = document.getElementById("grid");
+  var tablewrap = document.getElementById("tablewrap");
+  var tbody = document.getElementById("gtbody");
   var empty = document.getElementById("empty");
   var resultcount = document.getElementById("resultcount");
+  var radar = document.getElementById("radar");
+  var radarwrap = document.querySelector(".radarwrap");
 
   function render() {
     var list = GRANTS.filter(matches).sort(sortFn);
-    grid.innerHTML = list.map(renderCard).join("");
+    var isTable = state.view === "table";
+
+    if (isTable) {
+      tbody.innerHTML = list.map(renderRow).join("");
+    } else {
+      grid.innerHTML = list.map(renderCard).join("");
+    }
+    tablewrap.hidden = !isTable;
+    grid.hidden = isTable;
+
     empty.hidden = list.length > 0;
     resultcount.textContent =
       list.length + " of " + GRANTS.length + " opportunit" + (GRANTS.length === 1 ? "y" : "ies") + " shown";
+
+    syncSortHeaders();
+    syncFilterCount();
+  }
+
+  /* The filter panel is collapsed by default so the table sits near the top;
+     the badge keeps hidden active filters from being invisible. */
+  function syncFilterCount() {
+    var active = ["category", "status", "fit", "program", "gate"].filter(function (k) {
+      return state[k];
+    }).length + (state.q ? 1 : 0);
+    var el = document.getElementById("fp-count");
+    el.textContent = active;
+    el.hidden = active === 0;
+    if (active) document.getElementById("filterpanel").open = true;
+  }
+
+  /* The radar answers "what is closing soonest" independently of the active sort,
+     which is the whole reason a fit-sorted table is still usable for deadlines. */
+  function renderRadar() {
+    var soon = GRANTS.filter(function (g) {
+      if (!g.deadline) return false;
+      var d = daysUntil(g.deadline);
+      return d >= 0 && d <= RADAR_DAYS;
+    }).sort(function (a, b) {
+      return daysUntil(a.deadline) - daysUntil(b.deadline);
+    });
+
+    if (!soon.length) {
+      radarwrap.hidden = true;
+      return;
+    }
+    radarwrap.hidden = false;
+
+    radar.innerHTML = soon
+      .map(function (g) {
+        var d = daysUntil(g.deadline);
+        var cls = d <= URGENT_DAYS ? "urgent" : d <= DUE_DAYS ? "due" : "ok";
+        var short = parseDate(g.deadline)
+          .toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+        return '<a class="radaritem ' + cls + '" href="#r-' + esc(g.id) + '" data-id="' + esc(g.id) + '">' +
+          '<span class="radardate">' + esc(short) + "</span>" +
+          '<span class="radarname">' + esc(g.funder) + "</span>" +
+          '<span class="radardays">' + (d === 0 ? "today" : d === 1 ? "1 day" : d + " days") + "</span>" +
+          "</a>";
+      })
+      .join("");
   }
 
   /* -------------------------------- chips ------------------------------ */
@@ -218,6 +397,92 @@
 
   function countBy(pred) {
     return GRANTS.filter(pred).length;
+  }
+
+  /* ---------------------------- interactions --------------------------- */
+
+  var sortHeaders = Array.prototype.slice.call(
+    document.querySelectorAll("#gtable th[data-sort]")
+  );
+
+  function syncSortHeaders() {
+    sortHeaders.forEach(function (th) {
+      if (th.dataset.sort === state.sort) th.setAttribute("aria-sort", "ascending");
+      else th.removeAttribute("aria-sort");
+    });
+  }
+
+  function setSort(value) {
+    state.sort = value;
+    document.getElementById("sort").value = value;
+    render();
+  }
+
+  function wireInteractions() {
+    /* Expand a row's detail. Delegated, so it survives every re-render. */
+    tbody.addEventListener("click", function (ev) {
+      var btn = ev.target.closest(".rowtoggle");
+      if (!btn) return;
+      var detail = document.getElementById(btn.getAttribute("aria-controls"));
+      if (!detail) return;
+      var open = btn.getAttribute("aria-expanded") === "true";
+      btn.setAttribute("aria-expanded", String(!open));
+      detail.hidden = open;
+    });
+
+    sortHeaders.forEach(function (th) {
+      th.addEventListener("click", function () { setSort(th.dataset.sort); });
+      th.tabIndex = 0;
+      th.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          setSort(th.dataset.sort);
+        }
+      });
+    });
+
+    /* Radar jump: a filtered-out row cannot be scrolled to, so clear filters first. */
+    radar.addEventListener("click", function (ev) {
+      var item = ev.target.closest(".radaritem");
+      if (!item) return;
+      ev.preventDefault();
+      var id = item.dataset.id;
+
+      if (state.view !== "table") setView("table");
+      if (!document.getElementById("r-" + id)) {
+        clearFilters();
+        render();
+      }
+      var row = document.getElementById("r-" + id);
+      if (!row) return;
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+      row.classList.remove("rowflash");
+      void row.offsetWidth;          /* restart the animation on repeat clicks */
+      row.classList.add("rowflash");
+      var toggle = row.querySelector(".rowtoggle");
+      if (toggle) toggle.focus({ preventScroll: true });
+    });
+  }
+
+  function clearFilters() {
+    state.q = "";
+    state.category = state.status = state.fit = state.program = state.gate = null;
+    document.getElementById("search").value = "";
+    /* The view toggle lives in a .chips container too, but it is not a filter. */
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".chips:not(#chips-view) .chip"),
+      function (c) { c.setAttribute("aria-pressed", "false"); }
+    );
+  }
+
+  function setView(view) {
+    state.view = view;
+    try { localStorage.setItem(VIEW_KEY, view); } catch (e) { /* storage disabled */ }
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#chips-view .chip"),
+      function (c) { c.setAttribute("aria-pressed", String(c.dataset.value === view)); }
+    );
+    render();
   }
 
   function init() {
@@ -252,6 +517,21 @@
       { value: "FLL", label: "FLL" },
     ]);
 
+    /* The view toggle is exclusive — unlike the filter chips it has no "off" state,
+       so it gets its own builder rather than buildChips(). */
+    document.getElementById("chips-view").innerHTML = [
+      { value: "table", label: "Table" },
+      { value: "cards", label: "Cards" },
+    ].map(function (o) {
+      return '<button type="button" class="chip" aria-pressed="' +
+        String(o.value === state.view) + '" data-value="' + o.value + '">' + o.label + "</button>";
+    }).join("");
+
+    document.getElementById("chips-view").addEventListener("click", function (ev) {
+      var btn = ev.target.closest(".chip");
+      if (btn) setView(btn.dataset.value);
+    });
+
     document.getElementById("search").addEventListener("input", function (e) {
       state.q = e.target.value.trim().toLowerCase();
       render();
@@ -279,6 +559,8 @@
     sv.classList.add("small");
     document.getElementById("footer-verified").textContent = vd;
 
+    wireInteractions();
+    renderRadar();
     render();
   }
 

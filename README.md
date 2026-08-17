@@ -6,6 +6,32 @@ A single-page website listing grant opportunities, deadlines, and direct applica
 
 No build step, no dependencies, no external network requests. Open `index.html` and it works.
 
+## How the page is laid out
+
+**Closing soonest** — a strip above the list showing every grant with a dated deadline in the next
+90 days, soonest first. This exists because the list defaults to sorting by *fit*, which scatters
+the dated deadlines: the best-matched grants for this team are mostly rolling or waiting to reopen,
+so a deadline column alone would leave the nearest deadline sitting at row 20. Clicking an entry
+clears any active filters and jumps to that row.
+
+**Table** (default) or **cards**, switched with the View toggle; the choice is remembered. Both
+views share the same filtering and sorting. Click any grant name to expand eligibility, the next
+step, and every link. Click the Fit, Grant or Deadline column headers to re-sort.
+
+The deadline column encodes urgency, so an approaching date reads at a glance wherever it lands:
+
+| Shown | Meaning |
+| --- | --- |
+| date + days left, rust | 14 days or fewer |
+| date + days left, amber | 45 days or fewer |
+| date + days left, grey | further out |
+| `Open now` / `Rolling` | no fixed date, currently accepting |
+| `Watch` | closed for now, expected to reopen |
+| `Closed` | the stored deadline has passed |
+
+Filters are collapsed behind the **Filters** toggle; a badge shows how many are active, and the
+panel opens itself whenever a filter is set.
+
 ## What's here
 
 ```
@@ -51,8 +77,9 @@ Everything lives in `assets/grants.js` as one object per grant. Copy an existing
 }
 ```
 
-Deadlines that have passed are automatically re-labelled **Closed**, and anything inside 45 days is
-promoted to **Deadline ahead**, so the page degrades gracefully if nobody updates it for a while.
+Deadlines that have passed are automatically re-labelled **Closed**, anything inside 45 days is
+promoted to **Deadline ahead**, and anything inside 90 days appears in the Closing soonest strip —
+so the page degrades gracefully if nobody updates it for a while.
 Bump `VERIFIED` at the top of the file whenever you do a check-over — it drives the "last verified"
 date shown in the header and footer.
 
