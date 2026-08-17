@@ -855,9 +855,80 @@ details.more[open] > summary::before { content: "\2212 "; }
 #f-delete, #m-clear { color: var(--urgent); border-color: var(--urgent-soft); }
 #f-delete:hover, #m-clear:hover { border-color: var(--urgent); }
 
+/* ---------------------- submission & review queue ---------------------- */
+
+.badge.yours.sent { background: var(--ok-soft); color: var(--ok); }
+
+.sendbtn { border-style: solid; }
+
+.sendrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+.sendrow button { cursor: pointer; }
+.sendrow .link::after { content: none; }
+
+.subbox {
+  font: .78rem/1.55 var(--mono) !important;
+  background: var(--surface-2);
+}
+
+.dlg-note.tight { margin: -4px 0 0; font-size: .82rem; }
+
+.dlg-wide { width: min(880px, calc(100vw - 32px)); }
+
+.adminlink {
+  font: 600 .78rem var(--mono);
+  background: none;
+  border: 0;
+  border-bottom: 1px dashed var(--border-firm);
+  color: var(--faint);
+  cursor: pointer;
+  padding: 0 0 1px;
+  margin-left: 6px;
+}
+.adminlink:hover { color: var(--accent-ink); border-color: var(--accent); }
+
+.queue { margin: 14px 0 4px; }
+.queue-empty, .queue-count {
+  margin: 0 0 8px;
+  font: 600 .78rem var(--mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.queue-table { border-top: 1px solid var(--border); font-size: .88rem; }
+.queue-table .col-amt, .queue-table .col-go { display: none; }
+.queue-actions td {
+  padding: 0 12px 14px !important;
+  border-bottom: 1px solid var(--border) !important;
+  display: flex;
+  gap: 8px;
+}
+.queue-actions .editbtn { white-space: nowrap; }
+.editbtn.on {
+  border-style: solid;
+  border-color: var(--ok);
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+#a-copy:disabled { opacity: .45; cursor: not-allowed; }
+
+/* The queue is a preview, so it must not restack into the mobile card form —
+   it lives inside a dialog that already constrains its width. */
+@media (max-width: 820px) {
+  .queue-table, .queue-table tbody, .queue-table tr, .queue-table td { display: block; }
+  .queue-table .grow { border: 0; margin: 0; padding: 0; }
+  .queue-actions td { display: flex !important; }
+}
+
 @media (max-width: 560px) {
   .fld-row { grid-template-columns: 1fr; }
   .dlg { padding: 22px 18px 18px; }
+  .sendrow { flex-direction: column; }
+  .sendrow button { width: 100%; }
 }
 
 /* -------------------------------- footer ------------------------------- */

@@ -22,6 +22,17 @@
 
 const VERIFIED = "2026-08-17";
 
+/* Where submitted grants go for approval. The address is assembled at runtime
+   rather than written out whole: this repo is public, and a plain mailto in the
+   source gets scraped. That is obfuscation, not protection — if the address
+   should not be public at all, put a forwarding alias here instead. */
+const ADMIN = {
+  emailUser: "dwhit353t",
+  emailHost: "gmail.com",
+  repo: "Crazyh1803/FIRST-Grants",
+  issueLabel: "grant-submission",
+};
+
 const CATEGORIES = {
   military: { label: "Military & Defense" },
   firstorg: { label: "FIRST & Robotics Foundations" },

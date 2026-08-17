@@ -194,9 +194,67 @@
       <button type="button" class="link" id="f-delete" hidden>Delete</button>
       <span class="spacer"></span>
       <button type="button" class="link" id="f-cancel">Cancel</button>
-      <button type="submit" class="link primary" id="f-save">Save grant</button>
+      <button type="submit" class="link" id="f-save">Save</button>
+      <button type="submit" class="link primary" id="f-save-send" value="send">Save &amp; send</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="submitdialog" class="dlg" aria-labelledby="sub-title">
+  <form method="dialog" class="dlg-x"><button value="cancel" aria-label="Close">&times;</button></form>
+  <h2 id="sub-title">Send to the admin</h2>
+  <p class="dlg-note">
+    This sends the grant for approval into the shared list. Pick a channel &mdash; both open
+    somewhere you still have to press send yourself, so nothing leaves without you.
+  </p>
+
+  <label class="fld"><span>Your name &mdash; optional, so the admin knows who found it</span>
+    <input id="s-name" maxlength="80" placeholder="e.g. Sam"></label>
+
+  <div class="sendrow">
+    <button type="button" class="link primary" id="s-email">Open email</button>
+    <button type="button" class="link" id="s-github">Open GitHub issue</button>
+    <button type="button" class="link" id="s-copy">Copy packet</button>
+  </div>
+
+  <label class="fld"><span>What gets sent</span>
+    <textarea id="s-packet" class="subbox" rows="12" readonly spellcheck="false"></textarea></label>
+  <p class="dlg-note tight">
+    If a button does nothing, this viewer is blocking it &mdash; copy the text above and send it
+    however you like.
+  </p>
+
+  <div class="dlg-actions">
+    <span class="spacer"></span>
+    <button type="button" class="link primary" id="s-done">Done</button>
+  </div>
+</dialog>
+
+<dialog id="admindialog" class="dlg dlg-wide" aria-labelledby="adm-title">
+  <form method="dialog" class="dlg-x"><button value="cancel" aria-label="Close">&times;</button></form>
+  <h2 id="adm-title">Review queue</h2>
+  <p class="dlg-note">
+    Paste a submission below &mdash; a whole email, a GitHub issue body, or raw JSON. Each one
+    renders as the row it would become. Approve the ones you want, then copy the block into
+    <code>assets/grants.js</code> and commit. That file, not this page, is the real list.
+  </p>
+
+  <label class="fld"><span>Paste submissions</span>
+    <textarea id="a-paste" rows="5" spellcheck="false"
+      placeholder="Paste the email or issue body here, then press Add to queue"></textarea></label>
+  <div class="sendrow">
+    <button type="button" class="link primary" id="a-add">Add to queue</button>
+    <button type="button" class="link" id="a-clear">Empty queue</button>
+  </div>
+  <p class="fld-err" id="a-err" role="alert" hidden></p>
+
+  <div id="a-queue" class="queue"></div>
+
+  <div class="dlg-actions">
+    <span class="spacer"></span>
+    <button type="button" class="link" id="a-copy">Copy approved entries</button>
+    <button type="button" class="link primary" id="a-close">Done</button>
+  </div>
 </dialog>
 
 <dialog id="managedialog" class="dlg" aria-labelledby="mng-title">
@@ -292,6 +350,7 @@
   <p>
     Corrections and additions belong in <code>assets/grants.js</code> &mdash; one object per grant, no
     build step, no dependencies. Edit the file, commit, and the page updates.
+    <button type="button" class="adminlink" id="open-admin">Admin: review queue</button>
   </p>
 </footer>
 

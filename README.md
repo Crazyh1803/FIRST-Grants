@@ -60,6 +60,45 @@ Storage can be unavailable (private windows, some embedded viewers). If a save f
 warning saying the entry will not survive a reload; the GitHub Pages version does not have this
 problem.
 
+## Submitting a grant to the admin
+
+A saved entry is a **Draft** until it's sent. **Save & send** in the add form, or **Send to admin**
+in any expanded entry, opens a dialog offering two channels:
+
+- **Open email** — a prefilled message to the address in `ADMIN` (`assets/grants.js`), with a
+  summary and a ready-to-paste `grants.js` entry. Very long entries would be truncated by mail
+  clients, so past ~1900 characters the link carries the summary and points at the clipboard.
+- **Open GitHub issue** — a prefilled issue on the repo, labelled `grant-submission`, with the
+  entry in a fenced code block. Needs a GitHub account; the repo is public and issues are enabled.
+
+Both are *navigations*, not background requests — that's deliberate, since the Artifact viewer's CSP
+blocks outbound `fetch`. Neither sends anything on its own: the submitter still presses send. The
+packet is always shown in a textarea with a **Copy packet** button, so if a viewer blocks the
+buttons there's still a way out. Once sent, the badge flips to **Sent** with the date, and editing
+the entry afterwards keeps that stamp.
+
+There is no backend. Only the `downloads` and `mcp` Artifact capabilities are available to this
+account — there's no shared storage — so submissions travel through the submitter's own email or
+GitHub account, not a server.
+
+### Approving into the dataset
+
+The footer has an **Admin: review queue** button (or add `#admin` to the URL). Paste in a whole
+email body, a GitHub issue body, or raw JSON — a bracket-matching scan pulls the entry out of the
+surrounding prose, and it accepts both strict JSON and the unquoted-key style this project writes.
+
+Each submission renders **through the same `renderRow()` the live table uses**, so you preview the
+real row before accepting it. Approve the ones you want, press **Copy approved entries**, and paste
+the result into the `GRANTS` array in `assets/grants.js`. The queue persists in `localStorage`, so
+review can span sessions.
+
+> The admin panel is **not** authentication. It only formats text and grants no privilege — anyone
+> can open it. The gate that matters is commit access to this repo: nothing is in the formal dataset
+> until it's in `assets/grants.js`.
+
+Pasted submissions go through `sanitizeGrant()` exactly like everything else, so a `javascript:`
+link is rejected before it can render.
+
 ## What's here
 
 ```

@@ -133,7 +133,51 @@
         .map(function (e) { return String(e).slice(0, 300); }).slice(0, 20),
       action: raw.action ? String(raw.action).slice(0, 800) : "",
       links: links.slice(0, 5),
+
+      /* Submission tracking, so a submitter can see what has actually gone out. */
+      submittedAt: /^\d{4}-\d{2}-\d{2}/.test(raw.submittedAt || "") ? raw.submittedAt : null,
+      submittedVia: ["email", "github", "copy"].indexOf(raw.submittedVia) > -1
+        ? raw.submittedVia : null,
+      submitter: raw.submitter ? String(raw.submitter).slice(0, 80) : "",
     };
+  }
+
+  /* The fields the formal dataset carries. Submission bookkeeping and the
+     `custom` flag are local-only and must not leak into assets/grants.js. */
+  var SOURCE_KEYS = ["id", "name", "funder", "category", "programs", "amount", "fit", "gate",
+                     "status", "deadline", "window", "why", "eligibility", "action", "links"];
+
+  /* Serialised in the file's own style — unquoted identifier keys, 2-space
+     indent — so an approved entry pastes into GRANTS without reformatting. */
+  function toSourceEntry(g, indent) {
+    var pad = indent || "  ";
+    var inner = pad + "  ";
+
+    function val(v, depth) {
+      if (v === null) return "null";
+      if (typeof v === "number" || typeof v === "boolean") return String(v);
+      if (typeof v === "string") return JSON.stringify(v);
+      if (Array.isArray(v)) {
+        if (!v.length) return "[]";
+        var simple = v.every(function (x) { return typeof x === "string" && x.length < 24; });
+        if (simple) return "[" + v.map(function (x) { return JSON.stringify(x); }).join(", ") + "]";
+        return "[\n" + v.map(function (x) {
+          return depth + "  " + val(x, depth + "  ");
+        }).join(",\n") + "\n" + depth + "]";
+      }
+      return "{ " + Object.keys(v).map(function (k) {
+        return k + ": " + JSON.stringify(v[k]);
+      }).join(", ") + " }";
+    }
+
+    var body = SOURCE_KEYS.filter(function (k) {
+      var v = g[k];
+      return v !== undefined && v !== "" && !(Array.isArray(v) && !v.length);
+    }).map(function (k) {
+      return inner + k + ": " + val(g[k], inner);
+    }).join(",\n");
+
+    return pad + "{\n" + body + ",\n" + pad + "},";
   }
 
   function loadCustom() {
@@ -157,6 +201,76 @@
   /* Everything downstream reads this, never GRANTS directly. */
   function allGrants() {
     return GRANTS.concat(custom);
+  }
+
+  /* ----------------------- forwarding a submission --------------------- */
+
+  var PASTE_MARKER = "--- paste into assets/grants.js ---";
+
+  function adminEmail() {
+    return ADMIN.emailUser + "@" + ADMIN.emailHost;
+  }
+
+  function submissionText(g) {
+    var lines = [
+      "New grant for the FIRST Grant Tracker.",
+      "",
+      "Grant:    " + g.name,
+      "Funder:   " + g.funder,
+      "Link:     " + (g.links[0] ? g.links[0].url : ""),
+      "Deadline: " + (g.deadline ? formatDate(g.deadline) : g.window || "no fixed date"),
+      "Amount:   " + (g.amount || "not stated"),
+    ];
+    if (g.submitter) lines.push("Found by: " + g.submitter);
+    if (g.why) lines.push("", "Why it fits:", g.why);
+    lines.push("", PASTE_MARKER, toSourceEntry(g), "");
+    return lines.join("\n");
+  }
+
+  function mailtoUrl(g) {
+    var subject = "[Grant Tracker] New grant: " + g.name;
+    var body = submissionText(g);
+    var url = "mailto:" + adminEmail() +
+      "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+
+    /* Mail clients silently truncate very long mailto URLs, which would ship a
+       half-written entry. Past the limit, send the summary and say where the
+       full entry is rather than losing part of it. */
+    if (url.length > 1900) {
+      var short = submissionText(g).split(PASTE_MARKER)[0] +
+        "(The full entry was too long for an email link — it is on my clipboard, " +
+        "pasted below or in a follow-up.)\n";
+      url = "mailto:" + adminEmail() +
+        "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(short);
+    }
+    return url;
+  }
+
+  function issueUrl(g) {
+    var body = [
+      "**Submitted through the Grant Tracker.**",
+      "",
+      "| | |",
+      "| --- | --- |",
+      "| Funder | " + g.funder + " |",
+      "| Link | " + (g.links[0] ? g.links[0].url : "") + " |",
+      "| Deadline | " + (g.deadline ? formatDate(g.deadline) : g.window || "no fixed date") + " |",
+      "| Amount | " + (g.amount || "not stated") + " |",
+      g.submitter ? "| Found by | " + g.submitter + " |" : "",
+      "",
+      g.why ? "> " + g.why : "",
+      "",
+      "Approve by pasting this into the `GRANTS` array in `assets/grants.js`:",
+      "",
+      "```js",
+      toSourceEntry(g),
+      "```",
+    ].filter(function (l) { return l !== ""; }).join("\n");
+
+    return "https://github.com/" + ADMIN.repo + "/issues/new" +
+      "?labels=" + encodeURIComponent(ADMIN.issueLabel) +
+      "&title=" + encodeURIComponent("New grant: " + g.name) +
+      "&body=" + encodeURIComponent(body);
   }
 
   /* ------------------------ shared cell fragments ---------------------- */
@@ -192,16 +306,23 @@
   }
 
   function yoursMark(g) {
-    return g.custom
-      ? ' <span class="badge yours" title="Added by your team, stored in this browser">Yours</span>'
-      : "";
+    if (!g.custom) return "";
+    if (g.submittedAt) {
+      return ' <span class="badge yours sent" title="Sent to the admin for approval on ' +
+        esc(formatDate(g.submittedAt.slice(0, 10))) + '">Sent</span>';
+    }
+    return ' <span class="badge yours" title="Added by your team, stored in this browser. Not sent to the admin yet.">Draft</span>';
   }
 
   function editBtn(g) {
-    return g.custom
-      ? '<button type="button" class="editbtn" data-edit="' + esc(g.id) +
-        '">Edit<span class="sr-only"> ' + esc(g.name) + "</span></button>"
-      : "";
+    if (!g.custom) return "";
+    var sent = g.submittedAt
+      ? "Sent " + formatDate(g.submittedAt.slice(0, 10)) + " · resend"
+      : "Send to admin";
+    return '<button type="button" class="editbtn" data-edit="' + esc(g.id) +
+      '">Edit<span class="sr-only"> ' + esc(g.name) + "</span></button>" +
+      '<button type="button" class="editbtn sendbtn" data-send="' + esc(g.id) + '">' +
+      esc(sent) + '<span class="sr-only"> ' + esc(g.name) + "</span></button>";
   }
 
   /* The deadline cell carries the whole "what is closing soon" signal, so it
@@ -234,9 +355,12 @@
 
   var FIT_DOTS = { high: "●●●", medium: "●●○", low: "●○○" };
 
-  function renderRow(g) {
+  /* `pfx` namespaces the element ids so the admin panel can render preview rows
+     with the same markup without colliding with the live table. */
+  function renderRow(g, pfx) {
+    var p = pfx || "";
     var dl = deadlineCell(g);
-    var detailId = "d-" + g.id;
+    var detailId = p + "d-" + g.id;
 
     var progs = (g.programs || [])
       .map(function (p) { return '<span class="tag">' + esc(p) + "</span>"; })
@@ -255,7 +379,7 @@
       : "";
 
     return (
-      '<tr class="grow" id="r-' + esc(g.id) + '" data-fit="' + esc(g.fit) + '">' +
+      '<tr class="grow" id="' + p + "r-" + esc(g.id) + '" data-fit="' + esc(g.fit) + '">' +
         '<td class="col-fit" data-label="Fit">' +
           '<span class="fitdots" aria-hidden="true">' + FIT_DOTS[g.fit] + "</span>" +
           '<span class="sr-only">' + esc(FIT_LABEL[g.fit]) + "</span>" +
@@ -400,9 +524,11 @@
     var isTable = state.view === "table";
 
     if (isTable) {
-      tbody.innerHTML = list.map(renderRow).join("");
+      /* Wrapped, not passed bare: map() would hand renderRow the array index as
+         its id-prefix argument and mangle every row id after the first. */
+      tbody.innerHTML = list.map(function (g) { return renderRow(g); }).join("");
     } else {
-      grid.innerHTML = list.map(renderCard).join("");
+      grid.innerHTML = list.map(function (g) { return renderCard(g); }).join("");
     }
     tablewrap.hidden = !isTable;
     grid.hidden = isTable;
@@ -667,11 +793,85 @@
     }
   }
 
+  /* --------------------------- submit dialog --------------------------- */
+
+  var subDlg = document.getElementById("submitdialog");
+  var pendingSubmit = null;
+
+  function openSubmit(g) {
+    pendingSubmit = g;
+    $("s-name").value = g.submitter || "";
+    $("s-packet").value = submissionText(g);
+    subDlg.showModal();
+  }
+
+  /* The name field feeds back into the stored grant so the packet, and any
+     later resend, carry it too. */
+  function syncSubmitter() {
+    if (!pendingSubmit) return;
+    pendingSubmit.submitter = $("s-name").value.trim().slice(0, 80);
+    $("s-packet").value = submissionText(pendingSubmit);
+  }
+
+  function markSent(via) {
+    if (!pendingSubmit) return;
+    pendingSubmit.submittedAt = new Date().toISOString();
+    pendingSubmit.submittedVia = via;
+    saveCustom();
+    render();
+  }
+
+  function wireSubmit() {
+    $("s-name").addEventListener("input", syncSubmitter);
+
+    $("s-email").addEventListener("click", function () {
+      syncSubmitter();
+      window.open(mailtoUrl(pendingSubmit), "_blank");
+      markSent("email");
+    });
+
+    $("s-github").addEventListener("click", function () {
+      syncSubmitter();
+      window.open(issueUrl(pendingSubmit), "_blank", "noopener");
+      markSent("github");
+    });
+
+    $("s-copy").addEventListener("click", function () {
+      syncSubmitter();
+      copyText($("s-packet"), $("s-copy"));
+      markSent("copy");
+    });
+
+    $("s-done").addEventListener("click", function () { subDlg.close(); });
+  }
+
+  /* Shared by every copy button: the clipboard API is unavailable over file://
+     and in some embedded viewers, so selection plus execCommand is the floor. */
+  function copyText(sourceEl, btn) {
+    var label = btn.textContent;
+    sourceEl.select();
+    var done = function () {
+      btn.textContent = "Copied";
+      setTimeout(function () { btn.textContent = label; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(sourceEl.value).then(done, function () { done(); });
+    } else {
+      try { document.execCommand("copy"); } catch (e) { /* the selection is the fallback */ }
+      done();
+    }
+  }
+
   function wireDialogs() {
     fillSelects();
 
     $("add-grant").addEventListener("click", function () { openForm(null); });
     $("f-cancel").addEventListener("click", function () { dlg.close(); });
+
+    /* Which submit button was pressed decides whether we chain into sending. */
+    var sendAfterSave = false;
+    $("f-save").addEventListener("click", function () { sendAfterSave = false; });
+    $("f-save-send").addEventListener("click", function () { sendAfterSave = true; });
 
     $("grantform").addEventListener("submit", function (ev) {
       ev.preventDefault();
@@ -682,9 +882,22 @@
         return;
       }
       var i = custom.findIndex(function (c) { return c.id === res.grant.id; });
-      if (i > -1) custom[i] = res.grant; else custom.push(res.grant);
+      if (i > -1) {
+        /* Editing must not silently clear an existing sent stamp. */
+        res.grant.submittedAt = custom[i].submittedAt;
+        res.grant.submittedVia = custom[i].submittedVia;
+        res.grant.submitter = custom[i].submitter || res.grant.submitter;
+        custom[i] = res.grant;
+      } else {
+        custom.push(res.grant);
+      }
       afterCustomChange();
-      if (storageOK) dlg.close();
+      if (storageOK) {
+        dlg.close();
+        if (sendAfterSave) {
+          openSubmit(custom.filter(function (c) { return c.id === res.grant.id; })[0]);
+        }
+      }
     });
 
     $("f-delete").addEventListener("click", function () {
@@ -694,12 +907,19 @@
       dlg.close();
     });
 
-    /* Edit buttons live inside re-rendered rows and cards, so delegate. */
+    /* Edit and send buttons live inside re-rendered rows and cards, so delegate. */
     document.addEventListener("click", function (ev) {
-      var btn = ev.target.closest("[data-edit]");
-      if (!btn) return;
-      var g = custom.filter(function (c) { return c.id === btn.dataset.edit; })[0];
-      if (g) openForm(g);
+      var ed = ev.target.closest("[data-edit]");
+      if (ed) {
+        var g = custom.filter(function (c) { return c.id === ed.dataset.edit; })[0];
+        if (g) openForm(g);
+        return;
+      }
+      var sd = ev.target.closest("[data-send]");
+      if (sd) {
+        var s = custom.filter(function (c) { return c.id === sd.dataset.send; })[0];
+        if (s) openSubmit(s);
+      }
     });
 
     $("manage-grants").addEventListener("click", function () {
@@ -710,15 +930,7 @@
     $("m-close").addEventListener("click", function () { mng.close(); });
 
     $("m-copy").addEventListener("click", function () {
-      var ta = $("m-json");
-      ta.select();
-      var done = function () { $("m-copy").textContent = "Copied"; setTimeout(function () { $("m-copy").textContent = "Copy"; }, 1600); };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(ta.value).then(done, function () { done(); });
-      } else {
-        try { document.execCommand("copy"); } catch (e) { /* selection is the fallback */ }
-        done();
-      }
+      copyText($("m-json"), $("m-copy"));
     });
 
     $("m-import").addEventListener("click", function () {
@@ -750,6 +962,197 @@
         $("m-clear").onclick = null;
       };
     });
+  }
+
+  /* ------------------------- admin review queue ------------------------ */
+
+  /* Not an access control. This panel only formats text and grants no
+     privilege — anyone can open it. Approval means a commit to grants.js. */
+
+  var QUEUE_KEY = "grantTrackerQueue";
+  var admDlg = document.getElementById("admindialog");
+  var queue = [];
+
+  function loadQueue() {
+    try {
+      var p = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+      queue = (Array.isArray(p) ? p : []).map(function (q) {
+        var g = sanitizeGrant(q);
+        return g ? { grant: g, approved: q.approved === true } : null;
+      }).filter(Boolean);
+    } catch (e) { queue = []; }
+  }
+
+  function saveQueue() {
+    try {
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(queue.map(function (q) {
+        var o = JSON.parse(JSON.stringify(q.grant));
+        o.approved = q.approved;
+        return o;
+      })));
+    } catch (e) { /* review still works for this session */ }
+  }
+
+  /* Submissions arrive wrapped in prose — an email body, a GitHub issue with a
+     fenced code block. Scan for balanced brackets rather than asking the admin
+     to trim by hand. */
+  function extractObjects(text) {
+    var out = [];
+    var depth = 0, start = -1, inStr = false, quote = "", esc2 = false;
+
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (inStr) {
+        if (esc2) { esc2 = false; }
+        else if (c === "\\") { esc2 = true; }
+        else if (c === quote) { inStr = false; }
+        continue;
+      }
+      if (c === '"' || c === "'") { inStr = true; quote = c; continue; }
+      if (c === "{" || c === "[") { if (depth === 0) start = i; depth++; continue; }
+      if (c === "}" || c === "]") {
+        depth--;
+        if (depth === 0 && start > -1) { out.push(text.slice(start, i + 1)); start = -1; }
+        if (depth < 0) depth = 0;
+        continue;
+      }
+    }
+    return out;
+  }
+
+  function parseSubmissions(text) {
+    var found = [];
+    extractObjects(text).forEach(function (chunk) {
+      var obj = null;
+      try {
+        obj = JSON.parse(chunk);
+      } catch (e) {
+        /* toSourceEntry() emits unquoted keys and a trailing comma, which is
+           valid JS but not JSON. Function-wrap rather than eval globally. */
+        try {
+          obj = Function("return (" + chunk.replace(/,\s*([}\]])/g, "$1") + ");")();
+        } catch (e2) { obj = null; }
+      }
+      if (!obj) return;
+      (Array.isArray(obj) ? obj : [obj]).forEach(function (o) {
+        var g = sanitizeGrant(o);
+        if (g) found.push(g);
+      });
+    });
+    return found;
+  }
+
+  function renderQueue() {
+    var el = $("a-queue");
+    if (!queue.length) {
+      el.innerHTML = '<p class="queue-empty">Nothing in the queue yet.</p>';
+      $("a-copy").disabled = true;
+      return;
+    }
+    var approved = queue.filter(function (q) { return q.approved; }).length;
+    $("a-copy").disabled = approved === 0;
+    $("a-copy").textContent = approved
+      ? "Copy " + approved + " approved " + (approved === 1 ? "entry" : "entries")
+      : "Copy approved entries";
+
+    el.innerHTML =
+      '<p class="queue-count">' + queue.length + " in queue &middot; " + approved + " approved</p>" +
+      '<table class="gtable queue-table"><tbody>' +
+      queue.map(function (q, i) {
+        /* Rendered as a plain grant: a queued submission is not the reviewer's
+           own draft, so it gets no Draft badge and no Edit/Send buttons. */
+        var preview = {};
+        Object.keys(q.grant).forEach(function (k) { preview[k] = q.grant[k]; });
+        preview.custom = false;
+        return renderRow(preview, "q") +
+          '<tr class="queue-actions"><td colspan="7">' +
+          '<button type="button" class="editbtn ' + (q.approved ? "on" : "") +
+            '" data-approve="' + i + '">' + (q.approved ? "✓ Approved" : "Approve") + "</button>" +
+          '<button type="button" class="editbtn" data-reject="' + i + '">Remove</button>' +
+          "</td></tr>";
+      }).join("") +
+      "</tbody></table>";
+  }
+
+  function openAdmin() {
+    $("a-err").hidden = true;
+    $("a-paste").value = "";
+    renderQueue();
+    admDlg.showModal();
+  }
+
+  function wireAdmin() {
+    loadQueue();
+
+    $("open-admin").addEventListener("click", openAdmin);
+    if (location.hash === "#admin") openAdmin();
+    window.addEventListener("hashchange", function () {
+      if (location.hash === "#admin") openAdmin();
+    });
+
+    $("a-add").addEventListener("click", function () {
+      var found = parseSubmissions($("a-paste").value);
+      if (!found.length) {
+        $("a-err").hidden = false;
+        $("a-err").textContent =
+          "Could not find a grant in that. It needs a name, a funder, and an http(s) link — " +
+          "paste the whole email or issue body and it will find the entry inside.";
+        return;
+      }
+      found.forEach(function (g) {
+        var dup = queue.some(function (q) { return q.grant.name === g.name && q.grant.funder === g.funder; });
+        if (!dup) queue.push({ grant: g, approved: false });
+      });
+      $("a-err").hidden = true;
+      $("a-paste").value = "";
+      saveQueue();
+      renderQueue();
+    });
+
+    $("a-queue").addEventListener("click", function (ev) {
+      var ap = ev.target.closest("[data-approve]");
+      if (ap) {
+        var i = +ap.dataset.approve;
+        queue[i].approved = !queue[i].approved;
+        saveQueue();
+        renderQueue();
+        return;
+      }
+      var rj = ev.target.closest("[data-reject]");
+      if (rj) {
+        queue.splice(+rj.dataset.reject, 1);
+        saveQueue();
+        renderQueue();
+        return;
+      }
+      /* Preview rows expand like real ones. */
+      var tg = ev.target.closest(".rowtoggle");
+      if (tg) {
+        var d = document.getElementById(tg.getAttribute("aria-controls"));
+        if (d) {
+          var open = tg.getAttribute("aria-expanded") === "true";
+          tg.setAttribute("aria-expanded", String(!open));
+          d.hidden = open;
+        }
+      }
+    });
+
+    $("a-clear").addEventListener("click", function () {
+      queue = [];
+      saveQueue();
+      renderQueue();
+    });
+
+    $("a-copy").addEventListener("click", function () {
+      var text = queue.filter(function (q) { return q.approved; })
+        .map(function (q) { return toSourceEntry(q.grant); })
+        .join("\n");
+      var ta = $("a-paste");
+      ta.value = text;
+      copyText(ta, $("a-copy"));
+    });
+
+    $("a-close").addEventListener("click", function () { admDlg.close(); });
   }
 
   function setView(view) {
@@ -829,6 +1232,8 @@
 
     wireInteractions();
     wireDialogs();
+    wireSubmit();
+    wireAdmin();
     document.getElementById("manage-grants").hidden = custom.length === 0;
     renderRadar();
     render();
